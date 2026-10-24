@@ -1,0 +1,179 @@
+:root {
+  color-scheme: dark;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ink: #f4f1ea;
+  --muted: rgba(244, 241, 234, 0.62);
+  --line: rgba(244, 241, 234, 0.14);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; overflow: hidden; background: #0d0e10; }
+canvas { display: block; }
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(ellipse at center, rgba(10, 11, 13, 0.35), rgba(10, 11, 13, 0.78));
+  backdrop-filter: blur(6px);
+  transition: opacity 0.35s ease;
+  z-index: 10;
+}
+.overlay.hidden { opacity: 0; pointer-events: none; visibility: hidden; backdrop-filter: none; transition: opacity 0.35s ease, visibility 0s 0.35s; }
+
+.card {
+  width: min(420px, calc(100vw - 48px));
+  color: var(--ink);
+  padding: 36px 34px 30px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(18, 19, 22, 0.72);
+}
+.eyebrow {
+  margin: 0 0 10px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+h1 { margin: 0 0 12px; font-size: 34px; font-weight: 500; letter-spacing: -0.02em; }
+.lede { margin: 0 0 26px; font-size: 14px; line-height: 1.55; color: var(--muted); }
+
+#enter {
+  width: 100%;
+  padding: 14px 18px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: #121316;
+  background: var(--ink);
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.2s ease;
+}
+#enter:hover:not(:disabled) { transform: translateY(-1px); }
+#enter:disabled { opacity: 0.55; cursor: progress; }
+
+.keys {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 18px 0 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 9px;
+  font-size: 13px;
+  color: var(--muted);
+}
+kbd {
+  display: inline-block;
+  min-width: 22px;
+  margin-right: 4px;
+  padding: 2px 6px;
+  font: 500 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-align: center;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+}
+
+.crosshair {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+.prompt {
+  position: fixed;
+  left: 50%;
+  top: calc(50% + 28px);
+  transform: translateX(-50%);
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--ink);
+  background: rgba(14, 15, 18, 0.62);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.minimap {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  width: 199px;
+  height: 229px;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #f7f6f2;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+  z-index: 5;
+}
+.minimap.hidden { opacity: 0; }
+.minimap-inner {
+  position: relative;
+  width: 905px;
+  height: 1043px;
+  transform: scale(0.22);
+  transform-origin: 0 0;
+}
+.minimap img { display: block; width: 905px; height: 1043px; opacity: 0.85; }
+.you {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 22px solid transparent;
+  border-right: 22px solid transparent;
+  border-bottom: 52px solid #e0552d;
+  filter: drop-shadow(0 0 6px rgba(224, 85, 45, 0.6));
+}
+.room {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #f4f1ea;
+  background: rgba(14, 15, 18, 0.72);
+}
+.room:empty { display: none; }
+
+.toggles {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+}
+.toggles button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px 7px 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  background: rgba(14, 15, 18, 0.62);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.toggles button.on { background: rgba(224, 85, 45, 0.85); border-color: transparent; }
+.toggles kbd { font-size: 10px; }
