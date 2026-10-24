@@ -11,7 +11,7 @@ import { Lighting } from './scene/Lighting'
 import { useMaterials } from './scene/materials'
 import { Player } from './scene/Player'
 import { Minimap } from './Minimap'
-import { unitById, type UnitId } from './scene/plan'
+import { DMR, unitById, type UnitId } from './scene/plan'
 import { TouchControls } from './TouchControls'
 import { player, TOUCH, ui, useUi } from './store'
 
@@ -69,7 +69,7 @@ export default function App() {
 }
 
 /** Laid out as on the floor: 01 and 02 at the top, 04 and 03 below. */
-const GRID: UnitId[] = ['01', '02', '04', '03']
+const GRID: UnitId[] = DMR ? ['04'] : ['01', '02', '04', '03']
 
 function Hud() {
   const { locked, prompt, night, dims, flat, started } = useUi()
@@ -92,10 +92,12 @@ function Hud() {
     <>
       <div className={`overlay ${locked ? 'hidden' : ''}`}>
         <div className="card">
-          <p className="eyebrow">4 flats · 3 BHK</p>
+          <p className="eyebrow">{DMR ? 'Flat 04 · Type 3D · 3 BHK' : '4 flats · 3 BHK'}</p>
           <h1>Walkthrough</h1>
           <p className="lede">
-            Pick a flat. Walk out of its front door into the common corridor, and open another flat&apos;s door to walk in.
+            {DMR
+              ? 'Walk through flat 04, room by room.'
+              : <>Pick a flat. Walk out of its front door into the common corridor, and open another flat&apos;s door to walk in.</>}
           </p>
           <button
             className={`enter resume ${started ? '' : 'hidden'}`}
@@ -104,7 +106,7 @@ function Hud() {
           >
             Resume in Flat {flat}
           </button>
-          <div className="flats">
+          <div className={`flats ${DMR ? 'single' : ''}`}>
             {GRID.map((id) => {
               const u = unitById(id)
               return (
@@ -131,7 +133,7 @@ function Hud() {
               <li>Left thumb: drag to walk (push further to run)</li>
               <li>Right thumb: drag to look around</li>
               <li>Tap a door, or the button, to open or close it</li>
-              <li>Pause button (top left) to pick another flat</li>
+              <li>Pause button (top left) to {DMR ? 'pause' : 'pick another flat'}</li>
             </ul>
           ) : (
           <ul className="keys">

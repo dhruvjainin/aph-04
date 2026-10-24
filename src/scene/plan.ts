@@ -1,6 +1,10 @@
 import { TYPE_3B } from './units/3B'
 import { TYPE_3C } from './units/3C'
 import { TYPE_3D } from './units/3D'
+import { TYPE_DMR } from './units/3D-dmr'
+
+/** Unlisted /dmr route: flat 04 alone, built from its own copy of the 3D plan. */
+export const DMR = typeof location !== 'undefined' && location.pathname.replace(/\/+$/, '') === '/dmr'
 
 // Four flats around a central lift core (see plans/building.png).
 // Each flat is traced in its own plan's pixels (src/scene/units) and placed into one building frame.
@@ -141,10 +145,11 @@ const placed = {
   '01': place(TYPE_3B, { anchor: [179.5, 88], at: [0, 0], mirror: true, label: '01' }),
   '02': place(TYPE_3B, { anchor: [179.5, 88], at: [0, 0], label: '02' }),
   '03': place(TYPE_3C, { anchor: [155, 52], at: [AISLE, SOUTH], label: '03' }),
-  '04': place(TYPE_3D, { anchor: [830, 22], at: [-AISLE, SOUTH], label: '04' }),
+  '04': place(DMR ? TYPE_DMR : TYPE_3D, { anchor: [830, 22], at: [-AISLE, SOUTH], label: '04' }),
 }
 
 export type UnitId = keyof typeof placed
+const SHOWN: UnitId[] = DMR ? ['04'] : ['01', '02', '03', '04']
 
 const INFO: Record<UnitId, { type: string }> = {
   '01': { type: '3A' },
@@ -160,7 +165,7 @@ const bounds = (rects: Rect[]): Rect => [
   Math.max(...rects.map((r) => r[3])),
 ]
 
-export const UNITS = (Object.keys(placed) as UnitId[]).map((id) => {
+export const UNITS = SHOWN.map((id) => {
   const p = placed[id]
   const [x0, y0, x1, y1] = bounds(p.floor)
   return {
@@ -187,25 +192,37 @@ const corridorSouth = S.Y(613)
 const coreNorth = N.Y(1224)
 
 /** Corridor walls between the flats' front doors; lifts and stairs sit behind them. */
-const CORE_WALLS: Wall[] = [
-  { rect: [M(AISLE), coreNorth, M(AISLE + CORE_T), S.Y(437)] },
-  { rect: [M(-AISLE - CORE_T), coreNorth, M(-AISLE), M(SOUTH)] },
-  { rect: [M(-AISLE), corridorSouth, M(AISLE), S.Y(630)] },
-]
+const southWall: Wall = { rect: [M(-AISLE), corridorSouth, M(AISLE), S.Y(630)] }
+const CORE_WALLS: Wall[] = DMR
+  ? // Only the stretch beside flat 04 remains: a landing closed off to the north and east.
+    [
+      { rect: [M(-AISLE), M(SOUTH - CORE_T), M(AISLE), M(SOUTH)] },
+      { rect: [M(AISLE), M(SOUTH - CORE_T), M(AISLE + CORE_T), S.Y(630)] },
+      southWall,
+    ]
+  : [
+      { rect: [M(AISLE), coreNorth, M(AISLE + CORE_T), S.Y(437)] },
+      { rect: [M(-AISLE - CORE_T), coreNorth, M(-AISLE), M(SOUTH)] },
+      southWall,
+    ]
 
 export const CORRIDOR = {
-  rect: [M(-AISLE), corridorNorth, M(AISLE), corridorSouth] as Rect,
+  rect: [M(-AISLE), DMR ? M(SOUTH) : corridorNorth, M(AISLE), corridorSouth] as Rect,
   /** Closed lift landing doors on the west face (centre z and width, metres). */
-  lifts: [
-    { z: 13.86, w: 1.0 },
-    { z: 16.14, w: 1.1 },
-    { z: 18.47, w: 1.0 },
-  ],
+  lifts: DMR
+    ? []
+    : [
+        { z: 13.86, w: 1.0 },
+        { z: 16.14, w: 1.1 },
+        { z: 18.47, w: 1.0 },
+      ],
   /** Stair fire doors: face (-1 west, +1 east) and centre z (metres). */
-  stairs: [
-    { side: -1 as const, z: 20.3 },
-    { side: 1 as const, z: 15.15 },
-  ],
+  stairs: DMR
+    ? []
+    : [
+        { side: -1 as const, z: 20.3 },
+        { side: 1 as const, z: 15.15 },
+      ],
   aisle: AISLE,
 }
 
@@ -230,7 +247,7 @@ export interface Room extends RoomRect {
 
 export const ROOMS: Room[] = [
   ...UNITS.flatMap((unit) => unit.rooms.map((r) => ({ ...r, unit }))),
-  { name: 'Corridor', rect: CORRIDOR.rect, unit: null },
+  { name: DMR ? 'Landing' : 'Corridor', rect: CORRIDOR.rect, unit: null },
 ]
 
 export const roomAt = (x: number, z: number) => {
