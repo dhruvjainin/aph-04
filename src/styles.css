@@ -281,7 +281,12 @@ html, body { overscroll-behavior: none; -webkit-user-select: none; user-select: 
   left: 0;
   right: 0;
   bottom: max(22px, env(safe-area-inset-bottom));
-  margin: 0;
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  margin: 0 auto;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(14, 15, 18, 0.85);
   text-align: center;
   font-size: 12px;
   color: var(--muted);
