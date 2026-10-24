@@ -11,7 +11,7 @@ import {
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { boxesToGeometry, type Box } from '../geometry'
 import { CEILING, FT, toX, toZ, unitById } from '../plan'
-import { add, frame, lbox, merge, roundedRect, type Built, type Key, type Parts } from './kit'
+import { add, frame, lbox, merge, panel, roundedRect, type Built, type Key, type Parts } from './kit'
 
 // Dining, flat 04 on /dmr: a crockery wall on the Common Toilet wall, a teak casing around the kitchen
 // opening under the beam, and a six-seat marble table pointing at the crockery wall.
@@ -31,9 +31,6 @@ function arch(w: number, h: number) {
   s.lineTo(-w / 2, 0)
   return new ShapeGeometry(s, 24)
 }
-
-/** Flat rectangle with UVs in metres, so the slat stripes keep their pitch. */
-const panel = (w: number, h: number) => new ShapeGeometry(roundedRect(w, h, 0.001)).translate(0, h / 2, 0)
 
 // ─── teak casing around the kitchen opening under the beam ─────────────────
 

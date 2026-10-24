@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react'
 import { CanvasTexture, Color, DoubleSide, MeshStandardMaterial, RepeatWrapping, SRGBColorSpace, Vector2 } from 'three'
 import type { Box } from './geometry'
 import { buildDining } from './interior/dining'
+import { buildFoyer } from './interior/foyer'
 import { merge, type Key } from './interior/kit'
 import { buildTvUnit } from './interior/tv'
 import { whiteMarble, type Materials } from './materials'
@@ -72,7 +73,40 @@ function stripeTexture() {
   return t
 }
 
-const NO_SHADOW = new Set<Key>(['screen', 'arch', 'disc'])
+/** Woven cane: straight and diagonal strands leaving small octagonal holes, one cell per 1.8 cm. */
+function caneTexture() {
+  const N = 64
+  const c = document.createElement('canvas')
+  c.width = c.height = N
+  const ctx = c.getContext('2d')!
+  ctx.fillStyle = '#3d2814'
+  ctx.fillRect(0, 0, N, N)
+  ctx.lineCap = 'square'
+  const strand = (x0: number, y0: number, x1: number, y1: number, w: number, col: string) => {
+    ctx.strokeStyle = col
+    ctx.lineWidth = w
+    ctx.beginPath()
+    ctx.moveTo(x0, y0)
+    ctx.lineTo(x1, y1)
+    ctx.stroke()
+  }
+  for (const o of [-N, 0, N]) {
+    strand(o, 0, o + N, N, 9, '#b98c50')
+    strand(o, N, o + N, 0, 9, '#b98c50')
+  }
+  for (const o of [0, N]) {
+    strand(0, o, N, o, 12, '#d8b57a')
+    strand(o, 0, o, N, 12, '#cfaa6c')
+  }
+  const t = new CanvasTexture(c)
+  t.wrapS = t.wrapT = RepeatWrapping
+  t.repeat.set(55, 55)
+  t.colorSpace = SRGBColorSpace
+  t.anisotropy = 8
+  return t
+}
+
+const NO_SHADOW = new Set<Key>(['screen', 'arch', 'disc', 'glass', 'flame'])
 
 const half = (b: Box) => [(b.max[0] - b.min[0]) / 2, (b.max[1] - b.min[1]) / 2, (b.max[2] - b.min[2]) / 2] as [number, number, number]
 const mid = (b: Box) => [(b.max[0] + b.min[0]) / 2, (b.max[1] + b.min[1]) / 2, (b.max[2] + b.min[2]) / 2] as [number, number, number]
@@ -80,7 +114,7 @@ const mid = (b: Box) => [(b.max[0] + b.min[0]) / 2, (b.max[1] + b.min[1]) / 2, (
 /** Furniture and fit-out, mounted on /dmr only: one merged mesh per material. */
 export function Interior({ m }: { m: Materials }) {
   const built = useMemo(() => {
-    const pieces = [buildTvUnit(), buildDining()]
+    const pieces = [buildTvUnit(), buildDining(), buildFoyer()]
     const lists: Partial<Record<Key, Parameters<typeof merge>[0]>> = {}
     for (const { parts } of pieces)
       for (const [k, g] of Object.entries(parts) as [Key, Parameters<typeof merge>[0]][]) (lists[k] ??= []).push(...g)
@@ -125,6 +159,18 @@ export function Interior({ m }: { m: Materials }) {
       fabric: new MeshStandardMaterial({ color: new Color('#e6ddcf'), roughness: 0.95 }),
       arch: new MeshStandardMaterial({ map: stripeTexture(), roughness: 0.7 }),
       disc: new MeshStandardMaterial({ color: new Color('#f4efe6'), emissive: new Color('#ffe8c4'), emissiveIntensity: 0.35, roughness: 0.4 }),
+      cane: new MeshStandardMaterial({ map: caneTexture(), roughness: 0.75 }),
+      glass: new MeshStandardMaterial({
+        color: new Color('#d9d4c8'),
+        metalness: 0.2,
+        roughness: 0.05,
+        transparent: true,
+        opacity: 0.3,
+        depthWrite: false,
+        side: DoubleSide,
+      }),
+      flame: new MeshStandardMaterial({ color: new Color('#ffd27a'), emissive: new Color('#ffb347'), emissiveIntensity: 2 }),
+      twig: new MeshStandardMaterial({ color: new Color('#8a7a4a'), roughness: 0.9 }),
     }
   }, [m])
 

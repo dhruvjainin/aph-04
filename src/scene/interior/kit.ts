@@ -1,4 +1,4 @@
-import { BufferGeometry, Matrix4, Shape, Vector3 } from 'three'
+import { BufferGeometry, Matrix4, Shape, ShapeGeometry, Vector3 } from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { boxesToGeometry, type Box, type V3 } from '../geometry'
 
@@ -19,6 +19,10 @@ export type Key =
   | 'fabric'
   | 'arch'
   | 'disc'
+  | 'cane'
+  | 'glass'
+  | 'flame'
+  | 'twig'
 
 export type Parts = Partial<Record<Key, BufferGeometry[]>>
 
@@ -84,3 +88,6 @@ export function roundedRect(w: number, h: number, r: number) {
   s.quadraticCurveTo(x, y, x + r, y)
   return s
 }
+
+/** Flat rectangle standing on y = 0 with UVs in metres, so repeating textures keep their pitch. */
+export const panel = (w: number, h: number) => new ShapeGeometry(roundedRect(w, h, 0.001)).translate(0, h / 2, 0)
