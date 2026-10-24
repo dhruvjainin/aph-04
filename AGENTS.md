@@ -1,14 +1,25 @@
 # F2904 — walkable 3D apartment
 
-Bare-shell (walls, doors, windows only) first-person walkthrough of apartment F-2904, built with Vite, TypeScript, React Three Fiber, drei, Rapier and three.js.
+Bare-shell (walls, doors, windows only) first-person walkthrough of four flats on one floor, built with Vite, TypeScript, React Three Fiber, drei, Rapier and three.js. All four flats (01–04) are modelled around the common lift corridor; the home screen is a 2×2 grid to pick a flat, and you can walk out of one front door and into another.
 
 - `npm run dev` (port 5179), `npm run build`, typecheck with `npx tsc -b`.
 - Append `?fps` to the URL for an FPS counter.
-- Target 60 FPS on Retina laptops: keep post-processing cheap (N8AO at half resolution), DPR capped at 1.5, merged static geometry, shadow map re-rendered only when doors move (`markShadowsDirty`).
+- Target 60 FPS on Retina laptops: keep post-processing cheap (N8AO at half resolution), DPR capped at 1.5, merged static geometry (door handles and downlight fittings too), one 4096 shadow map spanning the whole floor and re-rendered only when doors move (`markShadowsDirty`). Night lights and dimensions cover only the current flat (`ui.flat`) plus the corridor; the point-light count stays fixed so switching flats never recompiles shaders.
 
-## Room names
+## Flats
 
-The household names differ from the labels printed on `Floor Plan.png`. Always use the household names in code, UI and conversation.
+| Flat | Type | Position on the floor | Data |
+| --- | --- | --- | --- |
+| 01 | 3A | Top left, balconies west | Mirror of 3B |
+| 02 | 3B | Top right, balconies east | `src/scene/units/3B.ts` |
+| 03 | 3C | Bottom right, balconies east | `src/scene/units/3C.ts` |
+| 04 | 3D | Bottom left, balconies west | `src/scene/units/3D.ts` |
+
+Reference plans live in `plans/` (`building.png` shows the floor). Flats 01–03 use the printed plan labels (Bedroom 1, Bedroom 2, M.Bedroom, …); only 04 uses the household names below. All flats share the same finishes.
+
+## Room names (flat 04)
+
+The household names differ from the labels printed on the 3D plan. Always use the household names for flat 04 in code, UI and conversation.
 
 | Household name | Printed plan label | Plan location |
 | --- | --- | --- |
@@ -20,9 +31,15 @@ Attached spaces follow their bedroom: Master Dress / Master Toilet (top right), 
 
 ## Geometry
 
-- `src/scene/plan.ts` is the source of truth: wall rects and openings in plan pixels (≈69 px/m), converted with `toX`/`toZ`. `ROOMS` maps plan rects to household room names (first match wins).
+- Each flat type is traced in its own plan image's pixels (`src/scene/units/*.ts`, with its own `pxPerM`). `src/scene/plan.ts` places them into one building frame with `place()` (anchor, offset, optional mirror). The building frame uses 69 px/m with x = 0 on the shared 01/02 kitchen wall; convert with `toX`/`toZ`. Placed values must stay bit-identical where walls are shared or matched by exact equality (`clad()`), so always derive them through the same `place()` transform.
+- `plan.ts` also builds the corridor and core (`CORRIDOR`: decorative lift and stair doors), the merged `WALLS` (shared walls deduped), and `ROOMS` (first match wins, each tagged with its unit).
 - `src/scene/geometry.ts` builds merged box geometry; avoid coplanar overlapping faces (z-fighting).
 - Heights: ceiling is 9 ft (`CEILING = 9 * FT`, 2.743 m); the kitchen beam soffit gives 7 ft clear (2.134 m).
+
+## Mobile
+
+- `TOUCH` in `store.ts` detects touch-only devices. They get no pointer lock; `TouchControls.tsx` provides a left-side joystick (`touch.move`, full tilt runs), right-side drag-to-look (`touch.look`), tap or the action button to interact (`touch.interact`), and a pause button.
+- Phones render lighter: DPR starts at 1 (max 1.25), N8AO is skipped, and the shadow map is 2048.
 
 ## View toggles
 
@@ -32,7 +49,7 @@ Attached spaces follow their bedroom: Master Dress / Master Toilet (top right), 
 
 ## Finishes (matched to site photos)
 
-- Floors: glossy cream 800×800 vitrified tile everywhere (one `MeshReflectorMaterial` floor at reflector resolution 256), except dark walnut laminate in the Parents Room and Parents Dress (`WOOD_ZONES`). The common lobby outside the entry has grey tile.
+- Floors: glossy cream 800×800 vitrified tile everywhere (one `MeshReflectorMaterial` floor at reflector resolution 256), except dark walnut laminate in each M.Bedroom and its dress (the Parents Room and Parents Dress in 04; `WOOD_ZONES`). The common corridor has grey tile.
 - Skirting follows the floor: 100 mm cream tile skirting, 70 mm dark wood skirting in wood zones, and none in toilets (`TOILETS`).
 - Walls and ceilings: smooth matte off-white paint with no plaster texture.
 - Toilets: glossy grey marble-look tiles from floor to a glossy lilac PVC false ceiling at 2.4 m (`FALSE_CEILING`), with white trims and a downlight.

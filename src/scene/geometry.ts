@@ -2,9 +2,10 @@ import { BufferAttribute, BufferGeometry } from 'three'
 import {
   BEAMS,
   CEILING,
+  CORRIDOR,
   FALSE_CEILING,
-  KITCHEN,
-  LOBBY,
+  KITCHEN_DADO,
+  KITCHENS,
   RAILINGS,
   TOILETS,
   WALLS,
@@ -14,6 +15,7 @@ import {
   toX,
   toZ,
   type Opening,
+  type Side,
   type Wall,
 } from './plan'
 
@@ -221,8 +223,6 @@ export function buildWalls(): WallBuild {
 
 // ─── wall cladding (toilet tiles, kitchen dado) ────────────────────────────
 
-type Side = 'n' | 's' | 'w' | 'e'
-
 /** Line the inside faces of a plan rect with a thin skin, leaving holes for openings in the walls behind. */
 function clad(rect: Rect, sides: Side[], y0: number, y1: number, T: number, out: Box[]) {
   const [X0, Z0, X1, Z1] = footprintMetres(rect)
@@ -307,7 +307,10 @@ export function buildFinishes(): FinishBuild {
     }
   }
 
-  clad(KITCHEN.rect, ['e', 'n', 's'], KITCHEN.dado[0], KITCHEN.dado[1], 0.006, out.dado)
+  for (const k of KITCHENS) {
+    const sides = (['n', 's', 'w', 'e'] as const).filter((s) => s !== k.open)
+    clad(k.rect, sides, KITCHEN_DADO[0], KITCHEN_DADO[1], 0.006, out.dado)
+  }
   return out
 }
 
@@ -324,6 +327,8 @@ export interface DoorSpec {
   /** Local z of the leaf centre (keeps the hinge on the swing face). */
   zOffset: number
   entry: boolean
+  /** Entry doors: flat number shown on the outside face. */
+  label?: string
   open: boolean
   style: 'wenge' | 'upvc'
 }
@@ -418,6 +423,7 @@ function addDoor(out: OpeningBuild, f: WallFrame, o: Opening, a0: number, a1: nu
     thickness,
     zOffset: (-facing * thickness) / 2,
     entry,
+    label: o.label,
     open: o.open ?? false,
     style: o.style === 'upvc' ? 'upvc' : 'wenge',
   })
@@ -514,18 +520,45 @@ function addRailing(out: OpeningBuild, [x0, y0, x1, y1]: Rect) {
   out.colliders.push(box(s0, s1, k0, k1, 0, 1.8))
 }
 
-// ─── common lobby ──────────────────────────────────────────────────────────
+// ─── common core: lift and stair doors on the corridor walls ───────────────
 
-export function buildLobby() {
-  const [x0, z0, x1, z1] = footprintMetres(LOBBY.rect)
-  const [d0, d1] = LOBBY.door.map(toZ)
-  const leaf: Box = { min: [x1 - 0.045, 0.006, d0], max: [x1, 2.08, d1] }
-  const frame: Box[] = [
-    { min: [x1 - 0.06, 0, d0 - 0.05], max: [x1, 2.1, d0] },
-    { min: [x1 - 0.06, 0, d1], max: [x1, 2.1, d1 + 0.05] },
-    { min: [x1 - 0.06, 2.08, d0 - 0.05], max: [x1, 2.14, d1 + 0.05] },
-  ]
-  return { floor: [x0, z0, x1, z1] as Rect, leaf, frame, handle: [x1 - 0.045, 1.0, d1 - 0.07] as V3 }
+export function buildCore() {
+  const steel: Box[] = []
+  const dark: Box[] = []
+  const A = CORRIDOR.aisle
+  // Boxes stand proud of a corridor wall face: side -1 is the west wall, +1 the east wall.
+  const proud = (side: -1 | 1, z0: number, z1: number, d: number, y0: number, y1: number): Box =>
+    side < 0 ? { min: [-A, y0, z0], max: [-A + d, y1, z1] } : { min: [A - d, y0, z0], max: [A, y1, z1] }
+
+  for (const { z, w } of CORRIDOR.lifts) {
+    const [z0, z1] = [z - w / 2, z + w / 2]
+    const F = 0.07
+    steel.push(
+      proud(-1, z0 - F, z0, 0.04, 0, 2.1),
+      proud(-1, z1, z1 + F, 0.04, 0, 2.1),
+      proud(-1, z0 - F, z1 + F, 0.04, 2.1, 2.18),
+      proud(-1, z0, z - 0.003, 0.022, 0.005, 2.1),
+      proud(-1, z + 0.003, z1, 0.022, 0.005, 2.1),
+    )
+    dark.push(proud(-1, z - 0.003, z + 0.003, 0.012, 0.005, 2.1))
+    // Call button panel.
+    steel.push(proud(-1, z1 + 0.22, z1 + 0.3, 0.012, 1.0, 1.22))
+    dark.push(proud(-1, z1 + 0.245, z1 + 0.275, 0.016, 1.06, 1.16))
+  }
+
+  for (const { side, z } of CORRIDOR.stairs) {
+    const [z0, z1] = [z - 0.45, z + 0.45]
+    const F = 0.05
+    dark.push(
+      proud(side, z0 - F, z0, 0.05, 0, 2.1),
+      proud(side, z1, z1 + F, 0.05, 0, 2.1),
+      proud(side, z0 - F, z1 + F, 0.05, 2.1, 2.15),
+      proud(side, z0, z1, 0.035, 0.005, 2.1),
+    )
+    // Panic bar.
+    steel.push(proud(side, z0 + 0.12, z1 - 0.08, 0.075, 1.0, 1.04))
+  }
+  return { steel, dark }
 }
 
 export function footprintMetres(r: Rect): Rect {

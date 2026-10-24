@@ -10,11 +10,14 @@ import { Effects } from './scene/Effects'
 import { Lighting } from './scene/Lighting'
 import { useMaterials } from './scene/materials'
 import { Player } from './scene/Player'
-import { hud, ui, useUi } from './store'
+import { Minimap } from './Minimap'
+import { unitById, type UnitId } from './scene/plan'
+import { TouchControls } from './TouchControls'
+import { player, TOUCH, ui, useUi } from './store'
 
 function World() {
   const m = useMaterials()
-  const { night, dims } = useUi()
+  const { night, dims, flat } = useUi()
   // Lit-interior reflections turn clear glass milky at night.
   useEffect(() => {
     m.glass.envMapIntensity = night ? 0.25 : 1.6
@@ -23,17 +26,17 @@ function World() {
   return (
     <Physics timeStep="vary" gravity={[0, -9.81, 0]}>
       <Apartment m={m} />
-      {night && <NightLights m={m} />}
-      {dims && <Dimensions />}
+      {night && <NightLights m={m} flat={flat} />}
+      {dims && <Dimensions flat={flat} />}
       <Player />
     </Physics>
   )
 }
 
 export default function App() {
-  const [dpr, setDpr] = useState(Math.min(window.devicePixelRatio, 1.25))
-  const [high, setHigh] = useState(true)
-  const { night } = useUi()
+  const [dpr, setDpr] = useState(Math.min(window.devicePixelRatio, TOUCH ? 1 : 1.25))
+  const [high, setHigh] = useState(!TOUCH)
+  const { night, flat } = useUi()
 
   return (
     <>
@@ -50,14 +53,14 @@ export default function App() {
             setHigh(false)
             setDpr((d) => Math.max(0.75, d - 0.25))
           }}
-          onIncline={() => setDpr((d) => Math.min(window.devicePixelRatio, 1.5, d + 0.25))}
+          onIncline={() => setDpr((d) => Math.min(window.devicePixelRatio, TOUCH ? 1.25 : 1.5, d + 0.25))}
           flipflops={4}
         />
         {new URLSearchParams(location.search).has('fps') && <Stats />}
         <Suspense fallback={null}>
-          <Lighting night={night} />
+          <Lighting night={night} flat={flat} />
           <World />
-          <Effects high={high} night={night} />
+          <Effects high={high} night={night} mobile={TOUCH} />
         </Suspense>
       </Canvas>
       <Hud />
@@ -65,8 +68,11 @@ export default function App() {
   )
 }
 
+/** Laid out as on the floor: 01 and 02 at the top, 04 and 03 below. */
+const GRID: UnitId[] = ['01', '02', '04', '03']
+
 function Hud() {
-  const { locked, prompt, night, dims } = useUi()
+  const { locked, prompt, night, dims, flat, started } = useUi()
   const { progress, active } = useProgress()
   const [map, setMap] = useState(true)
   const loading = active || progress < 100
@@ -81,16 +87,53 @@ function Hud() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  // Every button carries `.enter`: the pointer-lock control binds to them once, on mount.
   return (
     <>
       <div className={`overlay ${locked ? 'hidden' : ''}`}>
         <div className="card">
-          <p className="eyebrow">Apartment F-2904 · 3 BHK</p>
+          <p className="eyebrow">4 flats · 3 BHK</p>
           <h1>Walkthrough</h1>
-          <p className="lede">Bare-shell model traced from the sanctioned floor plan. Walls, doors and windows only.</p>
-          <button id="enter" disabled={loading}>
-            {loading ? `Loading ${Math.round(progress)}%` : 'Click to walk in'}
+          <p className="lede">
+            Pick a flat. Walk out of its front door into the common corridor, and open another flat&apos;s door to walk in.
+          </p>
+          <button
+            className={`enter resume ${started ? '' : 'hidden'}`}
+            disabled={loading}
+            onClick={() => TOUCH && ui.set({ locked: true })}
+          >
+            Resume in Flat {flat}
           </button>
+          <div className="flats">
+            {GRID.map((id) => {
+              const u = unitById(id)
+              return (
+                <button
+                  key={id}
+                  className={`enter flat ${started && id === flat ? 'current' : ''}`}
+                  disabled={loading}
+                  onClick={() => {
+                    player.teleport(id)
+                    ui.set({ started: true, locked: TOUCH || ui.get().locked })
+                  }}
+                >
+                  <span className="num">{id}</span>
+                  <span className="meta">
+                    Type {u.type}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          {loading && <p className="loading">Loading {Math.round(progress)}%</p>}
+          {TOUCH ? (
+            <ul className="keys">
+              <li>Left thumb: drag to walk (push further to run)</li>
+              <li>Right thumb: drag to look around</li>
+              <li>Tap a door, or the button, to open or close it</li>
+              <li>Pause button (top left) to pick another flat</li>
+            </ul>
+          ) : (
           <ul className="keys">
             <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</li>
             <li><kbd>Shift</kbd> walk faster</li>
@@ -100,32 +143,28 @@ function Hud() {
             <li><kbd>T</kbd> wall dimensions</li>
             <li><kbd>Esc</kbd> pause</li>
           </ul>
+          )}
         </div>
       </div>
 
       <div className="toggles">
         <button className={night ? 'on' : ''} onClick={() => ui.set({ night: !night })}>
-          {night ? 'Night' : 'Day'} <kbd>N</kbd>
+          {night ? 'Night' : 'Day'} {!TOUCH && <kbd>N</kbd>}
         </button>
         <button className={dims ? 'on' : ''} onClick={() => ui.set({ dims: !dims })}>
-          Dimensions <kbd>T</kbd>
+          Dimensions {!TOUCH && <kbd>T</kbd>}
         </button>
       </div>
 
       {locked && <div className="crosshair" />}
-      {locked && prompt && (
+      {locked && TOUCH && <TouchControls />}
+      {locked && !TOUCH && prompt && (
         <div className="prompt">
           <kbd>E</kbd> {prompt}
         </div>
       )}
 
-      <div className={`minimap ${map ? '' : 'hidden'}`}>
-        <div className="room" ref={(el) => void (hud.room = el)} />
-        <div className="minimap-inner">
-          <img src="/floorplan.png" alt="" draggable={false} />
-          <div className="you" ref={(el) => void (hud.dot = el)} />
-        </div>
-      </div>
+      <Minimap visible={map && started} />
     </>
   )
 }

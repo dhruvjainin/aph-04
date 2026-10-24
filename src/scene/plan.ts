@@ -1,12 +1,16 @@
-// Geometry traced from public/floorplan.png (905×1043 px, ≈69 px per metre).
-// Every coordinate below is in plan pixels; `toX`/`toZ` convert to metres
-// centred on the apartment.
+import { TYPE_3B } from './units/3B'
+import { TYPE_3C } from './units/3C'
+import { TYPE_3D } from './units/3D'
+
+// Four flats around a central lift core (see plans/building.png).
+// Each flat is traced in its own plan's pixels (src/scene/units) and placed into one building frame.
+// Building coordinates are "plan pixels" at 69 px per metre; `toX`/`toZ` convert them to metres.
+// x runs west → east with 0 on the shared kitchen wall of flats 01 and 02; z runs north → south.
 
 export const PX_PER_M = 69
-const CENTER = { x: 453, y: 523 }
 
-export const toX = (px: number) => (px - CENTER.x) / PX_PER_M
-export const toZ = (py: number) => (py - CENTER.y) / PX_PER_M
+export const toX = (px: number) => px / PX_PER_M
+export const toZ = (py: number) => py / PX_PER_M
 export const toM = (px: number) => px / PX_PER_M
 
 export const FT = 0.3048
@@ -15,6 +19,8 @@ export const CEILING = 9 * FT
 export const DOOR_HEAD = 2.1
 
 export type OpeningKind = 'door' | 'entry' | 'window' | 'open' | 'slider' | 'vent'
+export type Rect = [x0: number, y0: number, x1: number, y1: number]
+export type Side = 'n' | 's' | 'w' | 'e'
 
 export interface Opening {
   from: number
@@ -30,11 +36,38 @@ export interface Opening {
   /** Overrides for OPENING_HEIGHTS. */
   sill?: number
   head?: number
+  /** Entry doors: flat number on the corridor-side plate. */
+  label?: string
 }
 
 export interface Wall {
-  rect: [x0: number, y0: number, x1: number, y1: number]
+  rect: Rect
   openings?: Opening[]
+}
+
+export interface RoomRect {
+  name: string
+  rect: Rect
+  toilet?: boolean
+}
+
+/** One flat type, in the pixels of its own plan image. */
+export interface UnitPlan {
+  pxPerM: number
+  walls: Wall[]
+  /** Balcony railings on the open edge. */
+  railings: Rect[]
+  /** Dark laminate floor (the M.Bedroom and its dress); everything else is glossy tile. */
+  wood: Rect[]
+  /** Downstand beams: plan rect and soffit height. */
+  beams: { rect: Rect; soffit: number }[]
+  /** The kitchen gets a tile dado on every side but the open one. */
+  kitchen: { rect: Rect; open: Side }
+  /** Floor outline (non-overlapping rects). */
+  floor: Rect[]
+  /** First match wins, so specific rooms precede the open living/dining area. */
+  rooms: RoomRect[]
+  spawn: { x: number; y: number; yaw: number }
 }
 
 export const OPENING_HEIGHTS: Record<OpeningKind, [sill: number, head: number]> = {
@@ -47,129 +80,161 @@ export const OPENING_HEIGHTS: Record<OpeningKind, [sill: number, head: number]> 
   vent: [1.55, DOOR_HEAD],
 }
 
-export const WALLS: Wall[] = [
-  // ── horizontal ──────────────────────────────────────────────
-  { rect: [77, 22, 830, 37] },
-  { rect: [499, 150, 830, 162], openings: [{ from: 556, to: 605, kind: 'door', hinge: 'end', swing: 1, open: true }] },
-  { rect: [77, 277, 1002, 289], openings: [{ from: 439, to: 497, kind: 'door', hinge: 'end', swing: -1, open: true }] },
-  { rect: [626, 392, 816, 404] },
-  { rect: [77, 527, 376, 540] },
-  {
-    rect: [447, 634, 816, 645],
-    openings: [
-      { from: 640, to: 698, kind: 'door', hinge: 'start', swing: 1, open: true, style: 'upvc' },
-      { from: 716, to: 780, kind: 'window', sill: 1.1 },
-    ],
-  },
-  { rect: [638, 742, 830, 752], openings: [{ from: 694, to: 816, kind: 'open' }] },
-  { rect: [90, 760, 447, 772], openings: [{ from: 388, to: 445, kind: 'door', hinge: 'end', swing: 1, open: true }] },
-  { rect: [459, 760, 627, 772] },
-  { rect: [447, 885, 627, 897], openings: [{ from: 502, to: 555, kind: 'door', hinge: 'end', swing: -1, open: true }] },
-  { rect: [638, 834, 692, 845] },
-  { rect: [77, 1010, 638, 1024] },
-  // ── vertical ────────────────────────────────────────────────
-  { rect: [181, 37, 192, 277], openings: [{ from: 74, to: 240, kind: 'slider' }] },
-  { rect: [181, 289, 192, 527], openings: [{ from: 326, to: 490, kind: 'slider' }] },
-  {
-    rect: [77, 540, 90, 1010],
-    openings: [
-      { from: 587, to: 712, kind: 'window' },
-      { from: 807, to: 972, kind: 'window' },
-    ],
-  },
-  { rect: [499, 162, 510, 277] },
-  { rect: [679, 162, 690, 277], openings: [{ from: 168, to: 205, kind: 'vent' }] },
-  { rect: [816, 37, 830, 150] },
-  { rect: [816, 289, 830, 742], openings: [{ from: 291, to: 357, kind: 'entry', hinge: 'start', swing: -1, open: false }] },
-  { rect: [365, 540, 376, 760], openings: [{ from: 542, to: 598, kind: 'door', hinge: 'start', swing: -1, open: true }] },
-  { rect: [447, 645, 459, 885], openings: [{ from: 648, to: 695, kind: 'door', hinge: 'start', swing: 1, open: true }] },
-  {
-    rect: [627, 592, 638, 1010],
-    openings: [
-      { from: 700, to: 742, kind: 'vent' },
-      { from: 850, to: 885, kind: 'vent' },
-    ],
-  },
-  { rect: [682, 752, 692, 834] },
-  // ── common lobby outside the entry ──────────────────────────
-  { rect: [830, 400, 1002, 412] },
-  { rect: [990, 289, 1002, 400] },
-]
-
 export const openingHeights = (o: Opening): [number, number] => {
   const [sill, head] = OPENING_HEIGHTS[o.kind]
   return [o.sill ?? sill, o.head ?? head]
 }
 
-/** Glass balustrades on the open edge of both balconies. */
-export const RAILINGS: [number, number, number, number][] = [
-  [77, 37, 90, 277],
-  [77, 289, 90, 527],
-]
-
-/** Everything is glossy vitrified tile except the Parents Room and its dress, which are dark laminate. */
-export const WOOD_ZONES: [number, number, number, number][] = [
-  [90, 772, 447, 1010],
-  [447, 897, 627, 1010],
-]
-
-/** Toilets: marble-look wall tiles up to a glossy lilac false ceiling. */
-export const TOILETS: [number, number, number, number][] = [
-  [510, 162, 679, 277],
-  [459, 645, 627, 760],
-  [459, 772, 627, 885],
-]
 export const FALSE_CEILING = 2.4
+export const KITCHEN_DADO: [number, number] = [0.85, 1.45]
 
-/** Downstand beams: plan rect and soffit height. */
-export const BEAMS: { rect: [number, number, number, number]; soffit: number }[] = [
-  { rect: [626, 404, 645, 592], soffit: 7 * FT },
+// ─── placing flats in the building ─────────────────────────────────────────
+
+interface Placement {
+  /** A point of the source plan (px) … */
+  anchor: [x: number, y: number]
+  /** … lands here in the building (metres). */
+  at: [x: number, z: number]
+  mirror?: boolean
+  /** Flat number for the entry door plate. */
+  label?: string
+}
+
+const FLIP: Record<Side, Side> = { n: 'n', s: 's', w: 'e', e: 'w' }
+
+function place(plan: UnitPlan, { anchor: [ax, ay], at: [bx, bz], mirror = false, label }: Placement) {
+  const sx = mirror ? -1 : 1
+  // sx * (x - ax) first, so a mirrored wall on the axis lands on exactly the same numbers.
+  const X = (x: number) => ((sx * (x - ax)) / plan.pxPerM + bx) * PX_PER_M
+  const Y = (y: number) => ((y - ay) / plan.pxPerM + bz) * PX_PER_M
+  const rect = ([x0, y0, x1, y1]: Rect): Rect => (mirror ? [X(x1), Y(y0), X(x0), Y(y1)] : [X(x0), Y(y0), X(x1), Y(y1)])
+  const opening = (src: Opening, horizontal: boolean): Opening => {
+    const o = src.kind === 'entry' ? { ...src, label } : src
+    if (!horizontal) return { ...o, from: Y(o.from), to: Y(o.to), swing: mirror && o.swing ? (-o.swing as 1 | -1) : o.swing }
+    if (!mirror) return { ...o, from: X(o.from), to: X(o.to) }
+    return { ...o, from: X(o.to), to: X(o.from), hinge: o.hinge && (o.hinge === 'start' ? 'end' : 'start') }
+  }
+  const wall = ({ rect: r, openings }: Wall): Wall => {
+    const horizontal = r[2] - r[0] >= r[3] - r[1]
+    return { rect: rect(r), openings: openings?.map((o) => opening(o, horizontal)) }
+  }
+  return {
+    X,
+    Y,
+    walls: plan.walls.map(wall),
+    railings: plan.railings.map(rect),
+    wood: plan.wood.map(rect),
+    beams: plan.beams.map((b) => ({ rect: rect(b.rect), soffit: b.soffit })),
+    kitchen: { rect: rect(plan.kitchen.rect), open: mirror ? FLIP[plan.kitchen.open] : plan.kitchen.open },
+    floor: plan.floor.map(rect),
+    rooms: plan.rooms.map((r) => ({ ...r, rect: rect(r.rect) })),
+    spawn: { x: toX(X(plan.spawn.x)), z: toZ(Y(plan.spawn.y)), yaw: mirror ? -plan.spawn.yaw : plan.spawn.yaw },
+  }
+}
+
+/** The 2.4 m corridor runs between the flats' front doors; this is its east face (metres). */
+const AISLE = (305 - 179.5) / TYPE_3B.pxPerM
+/** North face of the south flats, measured off the building plan (metres). */
+const SOUTH = 20.91
+
+const placed = {
+  '01': place(TYPE_3B, { anchor: [179.5, 88], at: [0, 0], mirror: true, label: '01' }),
+  '02': place(TYPE_3B, { anchor: [179.5, 88], at: [0, 0], label: '02' }),
+  '03': place(TYPE_3C, { anchor: [155, 52], at: [AISLE, SOUTH], label: '03' }),
+  '04': place(TYPE_3D, { anchor: [830, 22], at: [-AISLE, SOUTH], label: '04' }),
+}
+
+export type UnitId = keyof typeof placed
+
+const INFO: Record<UnitId, { type: string }> = {
+  '01': { type: '3A' },
+  '02': { type: '3B' },
+  '03': { type: '3C' },
+  '04': { type: '3D' },
+}
+
+const bounds = (rects: Rect[]): Rect => [
+  Math.min(...rects.map((r) => r[0])),
+  Math.min(...rects.map((r) => r[1])),
+  Math.max(...rects.map((r) => r[2])),
+  Math.max(...rects.map((r) => r[3])),
 ]
 
-export const KITCHEN = { rect: [638, 404, 816, 634] as [number, number, number, number], dado: [0.85, 1.45] as [number, number] }
+export const UNITS = (Object.keys(placed) as UnitId[]).map((id) => {
+  const p = placed[id]
+  const [x0, y0, x1, y1] = bounds(p.floor)
+  return {
+    id,
+    flat: `Flat ${id}`,
+    type: INFO[id].type,
+    ...p,
+    center: { x: toX((x0 + x1) / 2), z: toZ((y0 + y1) / 2) },
+    /** Which façade the balconies face. */
+    west: x0 + x1 < 0,
+  }
+})
+export type Unit = (typeof UNITS)[number]
+export const unitById = (id: UnitId) => UNITS.find((u) => u.id === id)!
 
-/** Common lobby outside the main door (grey tile, opposite flat's door). */
-export const LOBBY = { rect: [830, 289, 990, 400] as [number, number, number, number], door: [298, 352] as [number, number] }
+// ─── common core: corridor, lifts and stairs ───────────────────────────────
 
-export const FOOTPRINT: [number, number, number, number] = [77, 22, 830, 1024]
+const M = (m: number) => m * PX_PER_M
+const N = placed['02']
+const S = placed['03']
+const CORE_T = 0.16
+const corridorNorth = N.Y(1048)
+const corridorSouth = S.Y(613)
+const coreNorth = N.Y(1224)
 
-/** Base stone floor, clipped to the apartment outline (excludes the AC ledge and the façade notch). */
-export const FLOOR_OUTLINE: [number, number, number, number][] = [
-  [77, 22, 830, 162],
-  [77, 162, 690, 289],
-  [77, 289, 830, 752],
-  [77, 752, 692, 845],
-  [77, 845, 638, 1024],
+/** Corridor walls between the flats' front doors; lifts and stairs sit behind them. */
+const CORE_WALLS: Wall[] = [
+  { rect: [M(AISLE), coreNorth, M(AISLE + CORE_T), S.Y(437)] },
+  { rect: [M(-AISLE - CORE_T), coreNorth, M(-AISLE), M(SOUTH)] },
+  { rect: [M(-AISLE), corridorSouth, M(AISLE), S.Y(630)] },
 ]
 
-export const SPAWN = { x: toX(765), z: toZ(330), yaw: Math.PI / 2 }
+export const CORRIDOR = {
+  rect: [M(-AISLE), corridorNorth, M(AISLE), corridorSouth] as Rect,
+  /** Closed lift landing doors on the west face (centre z and width, metres). */
+  lifts: [
+    { z: 13.86, w: 1.0 },
+    { z: 16.14, w: 1.1 },
+    { z: 18.47, w: 1.0 },
+  ],
+  /** Stair fire doors: face (-1 west, +1 east) and centre z (metres). */
+  stairs: [
+    { side: -1 as const, z: 20.3 },
+    { side: 1 as const, z: 15.15 },
+  ],
+  aisle: AISLE,
+}
 
-/**
- * Household room names (these differ from the printed plan labels; see AGENTS.md).
- * Rects are plan px; the first match wins, so specific rooms precede the open living/dining area.
- */
-export const ROOMS: { name: string; rect: [number, number, number, number] }[] = [
-  { name: 'Master Bedroom', rect: [192, 37, 499, 277] },
-  { name: 'Master Dress', rect: [499, 37, 816, 150] },
-  { name: 'Master Toilet', rect: [510, 162, 679, 277] },
-  { name: 'Master Balcony', rect: [77, 37, 181, 277] },
-  { name: 'Living Balcony', rect: [77, 289, 181, 527] },
-  { name: 'Kids Room', rect: [90, 540, 365, 760] },
-  { name: 'Parents Room', rect: [90, 772, 447, 1010] },
-  { name: 'Parents Dress', rect: [447, 897, 627, 1010] },
-  { name: 'Parents Toilet', rect: [459, 772, 627, 885] },
-  { name: 'Common Toilet', rect: [459, 645, 627, 760] },
-  { name: 'Utility', rect: [638, 645, 816, 742] },
-  { name: 'Kitchen', rect: [638, 404, 816, 634] },
-  { name: 'Foyer', rect: [626, 162, 830, 404] },
-  { name: 'Passage', rect: [376, 527, 459, 772] },
-  { name: 'Lobby', rect: [830, 289, 990, 400] },
-  { name: 'Living', rect: [181, 277, 447, 527] },
-  { name: 'Dining', rect: [447, 277, 638, 645] },
+// ─── the whole floor ───────────────────────────────────────────────────────
+
+const key = (w: Wall) => JSON.stringify(w)
+const unique = (walls: Wall[]) => [...new Map(walls.map((w) => [key(w), w])).values()]
+
+/** Shared walls (01/02 back-to-back kitchens) appear once. */
+export const WALLS: Wall[] = unique([...UNITS.flatMap((u) => u.walls), ...CORE_WALLS])
+export const RAILINGS = UNITS.flatMap((u) => u.railings)
+export const WOOD_ZONES = UNITS.flatMap((u) => u.wood)
+export const BEAMS = UNITS.flatMap((u) => u.beams)
+export const KITCHENS = UNITS.map((u) => u.kitchen)
+export const FLOOR_OUTLINE = UNITS.flatMap((u) => u.floor)
+export const TOILETS = UNITS.flatMap((u) => u.rooms.filter((r) => r.toilet).map((r) => r.rect))
+export const FOOTPRINT: Rect = bounds([...FLOOR_OUTLINE, CORRIDOR.rect])
+
+export interface Room extends RoomRect {
+  unit: Unit | null
+}
+
+export const ROOMS: Room[] = [
+  ...UNITS.flatMap((unit) => unit.rooms.map((r) => ({ ...r, unit }))),
+  { name: 'Corridor', rect: CORRIDOR.rect, unit: null },
 ]
 
 export const roomAt = (x: number, z: number) => {
-  const px = x * PX_PER_M + CENTER.x
-  const py = z * PX_PER_M + CENTER.y
-  return ROOMS.find(({ rect: [x0, y0, x1, y1] }) => px >= x0 && px <= x1 && py >= y0 && py <= y1)?.name ?? null
+  const px = x * PX_PER_M
+  const py = z * PX_PER_M
+  return ROOMS.find(({ rect: [x0, y0, x1, y1] }) => px >= x0 && px <= x1 && py >= y0 && py <= y1) ?? null
 }

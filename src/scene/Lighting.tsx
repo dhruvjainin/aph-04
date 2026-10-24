@@ -1,15 +1,34 @@
 import { Environment, Lightformer, Stars } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect } from 'react'
-import { Color } from 'three'
-import { markShadowsDirty, shadows } from '../store'
+import { useEffect, useRef } from 'react'
+import { Color, type DirectionalLight } from 'three'
+import { markShadowsDirty, shadows, TOUCH } from '../store'
+import { FOOTPRINT, toX, toZ, unitById, type UnitId } from './plan'
 
-/** Late-afternoon sun raking in through the west-facing glazing. */
-const SUN: [number, number, number] = [-11, 7.5, -3.5]
-const MOON: [number, number, number] = [-9, 10, 5]
+/** Sun raking in through the balcony glazing (west-facing flats; mirrored for east), as a direction from the floor's centre. */
+const SUN = [-11, 7.5, -3.5] as const
+const MOON = [-9, 10, 5] as const
+/** One shadow map spans the whole floor: anything outside it would read as sunlit. */
+const CENTER = { x: toX((FOOTPRINT[0] + FOOTPRINT[2]) / 2), z: toZ((FOOTPRINT[1] + FOOTPRINT[3]) / 2) }
+const SPAN = Math.hypot(toX(FOOTPRINT[2] - FOOTPRINT[0]), toZ(FOOTPRINT[3] - FOOTPRINT[1])) / 2 + 0.5
+const DISTANCE = 30
 
-export function Lighting({ night }: { night: boolean }) {
+/** The sun swaps sides to come in through the balconies of the flat you are in. */
+export function Lighting({ night, flat }: { night: boolean; flat: UnitId }) {
   const gl = useThree((s) => s.gl)
+  const light = useRef<DirectionalLight>(null)
+  // Balconies face west in 01 and 04, east in 02 and 03.
+  const w = unitById(flat).west ? 1 : -1
+  const [ox, oy, oz] = night ? MOON : SUN
+  const k0 = DISTANCE / Math.hypot(ox, oy, oz)
+
+  useEffect(() => {
+    const l = light.current
+    if (!l) return
+    l.target.position.set(CENTER.x, 0, CENTER.z)
+    l.target.updateMatrixWorld()
+  }, [])
+  useEffect(() => markShadowsDirty(3), [w])
 
   useEffect(() => {
     gl.shadowMap.autoUpdate = false
@@ -43,31 +62,32 @@ export function Lighting({ night }: { night: boolean }) {
       )}
 
       {/* What lights the rooms: a baked-once interior bounce rig standing in for GI. */}
-      <Environment key={night ? 'night' : 'day'} resolution={256} frames={1} environmentIntensity={1}>
+      <Environment key={`${night ? 'night' : 'day'}-${w}`} resolution={256} frames={1} environmentIntensity={1}>
         <color attach="background" args={[night ? '#1c1a18' : '#b9b2a8']} />
         <Lightformer form="rect" intensity={1.1 * k} color={night ? '#ffdcb8' : '#f1dfc8'} position={[0, -6, 0]} rotation-x={-Math.PI / 2} scale={[40, 40, 1]} />
         <Lightformer form="rect" intensity={0.9 * k} color={night ? '#ffe6cc' : '#f7f5f0'} position={[0, 6, 0]} rotation-x={Math.PI / 2} scale={[40, 40, 1]} />
-        <Lightformer form="rect" intensity={night ? 0.25 : 4} color={night ? '#3b4a6b' : '#eef4ff'} position={[-12, 1.5, -3]} rotation-y={Math.PI / 2} scale={[14, 2.4, 1]} />
-        <Lightformer form="rect" intensity={1.6 * k} color="#e5eefc" position={[12, 1.5, 0]} rotation-y={-Math.PI / 2} scale={[6, 2.2, 1]} />
+        <Lightformer form="rect" intensity={night ? 0.25 : 4} color={night ? '#3b4a6b' : '#eef4ff'} position={[-12 * w, 1.5, -3]} rotation-y={(w * Math.PI) / 2} scale={[14, 2.4, 1]} />
+        <Lightformer form="rect" intensity={1.6 * k} color="#e5eefc" position={[12 * w, 1.5, 0]} rotation-y={(-w * Math.PI) / 2} scale={[6, 2.2, 1]} />
         <Lightformer form="rect" intensity={1.2 * k} color="#fff1df" position={[0, 1.5, -12]} scale={[10, 2.4, 1]} />
         <Lightformer form="rect" intensity={1.2 * k} color="#fff1df" position={[0, 1.5, 12]} rotation-y={Math.PI} scale={[10, 2.4, 1]} />
       </Environment>
 
       <directionalLight
-        position={night ? MOON : SUN}
+        ref={light}
+        position={[CENTER.x + ox * w * k0, oy * k0, CENTER.z + oz * k0]}
         intensity={night ? 0.35 : 5.2}
         color={night ? '#9fb3de' : '#ffe6c7'}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={TOUCH ? [2048, 2048] : [4096, 4096]}
         shadow-bias={-0.0004}
         shadow-normalBias={0.025}
         shadow-radius={4}
-        shadow-camera-left={-9.5}
-        shadow-camera-right={9.5}
-        shadow-camera-top={9.5}
-        shadow-camera-bottom={-9.5}
-        shadow-camera-near={1}
-        shadow-camera-far={30}
+        shadow-camera-left={-SPAN}
+        shadow-camera-right={SPAN}
+        shadow-camera-top={SPAN}
+        shadow-camera-bottom={-SPAN}
+        shadow-camera-near={DISTANCE - SPAN - 4}
+        shadow-camera-far={DISTANCE + SPAN + 4}
       />
     </>
   )

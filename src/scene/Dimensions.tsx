@@ -1,10 +1,10 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { BufferGeometry, CanvasTexture, Matrix4, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace } from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { FALSE_CEILING, ROOMS, TOILETS, WALLS, toX, toZ } from './plan'
+import { FALSE_CEILING, WALLS, toX, toZ, unitById, type UnitId } from './plan'
 
 /** Open-plan zones have no single bounding walls, so they get no dimensions. */
-const SKIP = new Set(['Dining', 'Foyer', 'Passage', 'Lobby'])
+const SKIP = new Set(['Dining', 'Foyer', 'Passage'])
 const LABEL_H = 0.15
 const LIFT = 0.016
 const LINE = 0.008
@@ -57,13 +57,13 @@ interface Dim {
   text: string
 }
 
-export function Dimensions() {
+/** Labels for the flat you are in only, rebuilt when you walk into another. */
+export function Dimensions({ flat }: { flat: UnitId }) {
   const { lines, labels, lineMaterial } = useMemo(() => {
     const dims: Dim[] = []
-    for (const { name, rect } of ROOMS) {
+    for (const { name, rect, toilet } of unitById(flat).rooms) {
       if (SKIP.has(name)) continue
       const [x0, y0, x1, y1] = rect
-      const toilet = TOILETS.some((t) => t.every((v, i) => v === rect[i]))
       // Above every door, window and slider head; toilets sit under their false ceiling.
       const y = toilet ? FALSE_CEILING - 0.16 : 2.47
       const [X0, Z0, X1, Z1] = [toX(x0), toZ(y0), toX(x1), toZ(y1)]
@@ -101,7 +101,19 @@ export function Dimensions() {
 
     const lineMaterial = new MeshBasicMaterial({ color: '#25272b', polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })
     return { lines: mergeGeometries(parts), labels, lineMaterial }
-  }, [])
+  }, [flat])
+
+  useEffect(
+    () => () => {
+      lines.dispose()
+      lineMaterial.dispose()
+      for (const { material } of labels) {
+        material.map?.dispose()
+        material.dispose()
+      }
+    },
+    [lines, labels, lineMaterial],
+  )
 
   return (
     <group>

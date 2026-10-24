@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import type { Object3D } from 'three'
+import type { UnitId } from './scene/plan'
 
 export interface DoorHandle {
   toggle: () => void
@@ -20,9 +21,13 @@ interface UiState {
   loaded: boolean
   night: boolean
   dims: boolean
+  /** The flat you are in, or nearest to when in the corridor. */
+  flat: UnitId
+  /** False until the first flat is picked on the home screen. */
+  started: boolean
 }
 
-let state: UiState = { locked: false, prompt: null, loaded: false, night: false, dims: false }
+let state: UiState = { locked: false, prompt: null, loaded: false, night: false, dims: false, flat: '04', started: false }
 const listeners = new Set<() => void>()
 
 export const ui = {
@@ -42,4 +47,23 @@ export const ui = {
 export const useUi = () => useSyncExternalStore(ui.subscribe, ui.get)
 
 /** DOM nodes the render loop writes into directly (no React re-renders per frame). */
-export const hud: { dot: HTMLDivElement | null; room: HTMLDivElement | null } = { dot: null, room: null }
+export const hud: { dot: HTMLDivElement | null; room: HTMLDivElement | null; map: SVGSVGElement | null } = {
+  dot: null,
+  room: null,
+  map: null,
+}
+
+/** Phones and tablets: no pointer lock or keyboard, so on-screen touch controls drive the player. */
+export const TOUCH = typeof window !== 'undefined' && matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches
+
+/** Touch input, written by the on-screen controls and read by the player every frame. */
+export const touch = {
+  /** Joystick, each axis -1..1 (y down = backwards). */
+  move: { x: 0, y: 0 },
+  /** Look drag accumulated since the last frame, in pixels. */
+  look: { dx: 0, dy: 0 },
+  interact: () => {},
+}
+
+/** Registered by the player: jump to a flat's front door. */
+export const player = { teleport: (_id: UnitId) => {} }
