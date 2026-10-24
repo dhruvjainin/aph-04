@@ -187,6 +187,22 @@ function dadoTile() {
   })
 }
 
+/** Glossy white marble with warm grey veins (dining table top); one repeat = 1 m. */
+export function whiteMarble() {
+  const rand = rng(41)
+  return canvasTexture(1024, (ctx, size) => {
+    ctx.fillStyle = rgba(241, 238, 233)
+    ctx.fillRect(0, 0, size, size)
+    clouds(ctx, rand, 0, 0, size, size, 50, [
+      [222, 214, 204, 0.08],
+      [252, 250, 247, 0.1],
+    ])
+    soften(ctx, 0, 0, size, size, 3)
+    stoneVeins(ctx, rand, 0, 0, size, size, 4, 'rgba(150,132,118,0.3)', 4, 2)
+    stoneVeins(ctx, rand, 0, 0, size, size, 7, 'rgba(110,98,90,0.4)', 1.2, 0.4)
+  })
+}
+
 export function useMaterials() {
   const tex = useTexture(SETS) as Record<keyof typeof SETS, Texture>
 

@@ -15,7 +15,7 @@ Bare-shell (walls, doors, windows only) first-person walkthrough of four flats o
 | 03 | 3C | Bottom right, balconies east | `src/scene/units/3C.ts` |
 | 04 | 3D | Bottom left, balconies west | `src/scene/units/3D.ts` |
 
-`/dmr` is an unlisted route showing flat 04 on its own (no other flats, a small enclosed landing outside the front door). It is built from `src/scene/units/3D-dmr.ts`, a copy of `3D.ts` that can be edited independently; `DMR` in `plan.ts` switches the route.
+`/dmr` is an unlisted route showing flat 04 on its own (no other flats, a small enclosed landing outside the front door). It is built from `src/scene/units/3D-dmr.ts`, a copy of `3D.ts` that can be edited independently; `DMR` in `plan.ts` switches the route. Interiors for this route are mounted only on `/dmr` by `src/scene/Interior.tsx`, which merges one mesh per material from builders in `src/scene/interior/` (`tv.ts`: TV unit on the Living's south wall; `dining.ts`: crockery wall on the Dining's south wall (the Common Toilet wall), a teak casing around the kitchen opening under the beam, and a six-seat marble table and pendant pointing at the crockery wall).
 
 Reference plans live in `plans/` (`building.png` shows the floor). Flats 01–03 use the printed plan labels (Bedroom 1, Bedroom 2, M.Bedroom, …); only 04 uses the household names below. All flats share the same finishes.
 
