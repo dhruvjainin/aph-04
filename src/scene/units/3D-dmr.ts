@@ -62,7 +62,8 @@ export const TYPE_DMR: UnitPlan = {
     [447, 897, 627, 1010],
   ],
   beams: [{ rect: [626, 404, 645, 592], soffit: 7 * 0.3048 }],
-  kitchen: { rect: [638, 404, 816, 634], open: 'w' },
+  // The /dmr kitchen interior brings its own backsplash.
+  kitchen: { rect: [638, 404, 816, 634], open: 'w', dado: false },
   // Excludes the AC ledge and the façade notch.
   floor: [
     [77, 22, 830, 162],

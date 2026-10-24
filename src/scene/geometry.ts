@@ -308,6 +308,7 @@ export function buildFinishes(): FinishBuild {
   }
 
   for (const k of KITCHENS) {
+    if (k.dado === false) continue
     const sides = (['n', 's', 'w', 'e'] as const).filter((s) => s !== k.open)
     clad(k.rect, sides, KITCHEN_DADO[0], KITCHEN_DADO[1], 0.006, out.dado)
   }

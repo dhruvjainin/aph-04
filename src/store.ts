@@ -5,6 +5,8 @@ import type { UnitId } from './scene/plan'
 export interface DoorHandle {
   toggle: () => void
   isOpen: () => boolean
+  /** What the prompt calls it; defaults to "door". */
+  noun?: string
 }
 
 export const doorRegistry = new Map<Object3D, DoorHandle>()

@@ -1,12 +1,15 @@
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
-import { useEffect, useMemo } from 'react'
-import { CanvasTexture, Color, DoubleSide, MeshStandardMaterial, RepeatWrapping, SRGBColorSpace, Vector2 } from 'three'
+import { useFrame } from '@react-three/fiber'
+import { useEffect, useMemo, useRef } from 'react'
+import { CanvasTexture, Color, DoubleSide, MeshStandardMaterial, RepeatWrapping, SRGBColorSpace, Vector2, type Group, type Mesh } from 'three'
+import { doorRegistry, markShadowsDirty } from '../store'
 import type { Box } from './geometry'
 import { buildDining } from './interior/dining'
 import { buildFoyer } from './interior/foyer'
-import { merge, type Key } from './interior/kit'
+import { buildKitchen } from './interior/kitchen'
+import { merge, type Key, type Moving } from './interior/kit'
 import { buildTvUnit } from './interior/tv'
-import { whiteMarble, type Materials } from './materials'
+import { GREEN_TILE_REPEAT, greenMarble, greenTile, whiteMarble, type Materials } from './materials'
 
 /** A generic smart-TV home screen: a hero banner over rows of app tiles. */
 function screenTexture() {
@@ -106,15 +109,48 @@ function caneTexture() {
   return t
 }
 
-const NO_SHADOW = new Set<Key>(['screen', 'arch', 'disc', 'glass', 'flame'])
+const NO_SHADOW = new Set<Key>(['screen', 'arch', 'disc', 'glass', 'flame', 'frost'])
 
 const half = (b: Box) => [(b.max[0] - b.min[0]) / 2, (b.max[1] - b.min[1]) / 2, (b.max[2] - b.min[2]) / 2] as [number, number, number]
 const mid = (b: Box) => [(b.max[0] + b.min[0]) / 2, (b.max[1] + b.min[1]) / 2, (b.max[2] + b.min[2]) / 2] as [number, number, number]
 
-/** Furniture and fit-out, mounted on /dmr only: one merged mesh per material. */
+/** A drawer or shutter: toggled through the door registry, eased like the doors. */
+function Movable({ mv, material }: { mv: Moving; material: MeshStandardMaterial }) {
+  const group = useRef<Group>(null)
+  const mesh = useRef<Mesh>(null)
+  const progress = useRef(0)
+  const target = useRef(0)
+
+  useEffect(() => {
+    const m = mesh.current
+    if (!m) return
+    doorRegistry.set(m, { toggle: () => (target.current = target.current > 0.5 ? 0 : 1), isOpen: () => target.current > 0.5, noun: mv.noun })
+    return () => void doorRegistry.delete(m)
+  }, [mv])
+
+  useFrame((_, dt) => {
+    const g = group.current
+    const d = target.current - progress.current
+    if (!g || Math.abs(d) < 1e-4) return
+    progress.current += Math.sign(d) * Math.min(Math.abs(d), dt * 2.2)
+    const t = progress.current
+    const e = t * t * (3 - 2 * t)
+    if (mv.yaw) g.rotation.y = mv.yaw * e
+    if (mv.slide) g.position.set(mv.pivot[0] + mv.slide[0] * e, mv.pivot[1] + mv.slide[1] * e, mv.pivot[2] + mv.slide[2] * e)
+    markShadowsDirty()
+  })
+
+  return (
+    <group ref={group} position={mv.pivot}>
+      <mesh ref={mesh} geometry={mv.geometry} material={material} castShadow receiveShadow />
+    </group>
+  )
+}
+
+/** Furniture and fit-out, mounted on /dmr only: one merged mesh per material, plus drawers and shutters that open. */
 export function Interior({ m }: { m: Materials }) {
   const built = useMemo(() => {
-    const pieces = [buildTvUnit(), buildDining(), buildFoyer()]
+    const pieces = [buildTvUnit(), buildDining(), buildFoyer(), buildKitchen()]
     const lists: Partial<Record<Key, Parameters<typeof merge>[0]>> = {}
     for (const { parts } of pieces)
       for (const [k, g] of Object.entries(parts) as [Key, Parameters<typeof merge>[0]][]) (lists[k] ??= []).push(...g)
@@ -123,12 +159,16 @@ export function Interior({ m }: { m: Materials }) {
       g.forEach((x) => x.dispose())
       return [k, merged] as const
     })
-    return { meshes, colliders: pieces.flatMap((p) => p.colliders) }
+    return { meshes, colliders: pieces.flatMap((p) => p.colliders), moving: pieces.flatMap((p) => p.moving ?? []) }
   }, [])
 
   const mat = useMemo((): Record<Key, MeshStandardMaterial> => {
     const screenMap = screenTexture()
     const marbleMap = whiteMarble()
+    const tileMap = greenTile()
+    tileMap.repeat.set(1 / GREEN_TILE_REPEAT, 1 / GREEN_TILE_REPEAT)
+    // Grout lines land on the counter top at 0.9 m.
+    tileMap.offset.set(0, 0.5)
     return {
       cream: new MeshStandardMaterial({ color: new Color('#ece4d6'), roughness: 0.55 }),
       backing: new MeshStandardMaterial({ color: new Color('#b7ab98'), roughness: 0.8 }),
@@ -171,12 +211,24 @@ export function Interior({ m }: { m: Materials }) {
       }),
       flame: new MeshStandardMaterial({ color: new Color('#ffd27a'), emissive: new Color('#ffb347'), emissiveIntensity: 2 }),
       twig: new MeshStandardMaterial({ color: new Color('#8a7a4a'), roughness: 0.9 }),
+      cab: new MeshStandardMaterial({ color: new Color('#e6dccb'), roughness: 0.5 }),
+      verde: new MeshStandardMaterial({ map: greenMarble(), roughness: 0.1, envMapIntensity: 1.1 }),
+      gtile: new MeshStandardMaterial({ map: tileMap, roughness: 0.18 }),
+      frost: new MeshStandardMaterial({
+        color: new Color('#eef0ea'),
+        roughness: 0.35,
+        transparent: true,
+        opacity: 0.45,
+        depthWrite: false,
+        side: DoubleSide,
+      }),
     }
   }, [m])
 
   useEffect(
     () => () => {
       built.meshes.forEach(([, g]) => g.dispose())
+      built.moving.forEach((mv) => mv.geometry.dispose())
       for (const [k, x] of Object.entries(mat)) {
         if (k !== 'teak') x.map?.dispose()
         x.dispose()
@@ -189,6 +241,9 @@ export function Interior({ m }: { m: Materials }) {
     <>
       {built.meshes.map(([k, g]) => (
         <mesh key={k} geometry={g} material={mat[k]} castShadow={!NO_SHADOW.has(k)} receiveShadow={k !== 'screen'} />
+      ))}
+      {built.moving.map((mv, i) => (
+        <Movable key={i} mv={mv} material={mat[mv.key]} />
       ))}
       <RigidBody type="fixed" colliders={false}>
         {built.colliders.map((b, i) => (

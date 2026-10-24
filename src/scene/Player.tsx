@@ -135,7 +135,7 @@ export function Player() {
     if (state.clock.elapsedTime - lastProbe.current > 0.1) {
       lastProbe.current = state.clock.elapsedTime
       const door = ui.get().locked ? probe() : undefined
-      ui.set({ prompt: door ? (door.isOpen() ? 'Close door' : 'Open door') : null })
+      ui.set({ prompt: door ? `${door.isOpen() ? 'Close' : 'Open'} ${door.noun ?? 'door'}` : null })
       const room = roomAt(p.x, p.z)
       ui.set({ flat: room?.unit?.id ?? nearestFlat(p.x, p.z) })
       const label = !room ? '' : room.unit ? `${room.unit.flat} · ${room.name}` : room.name

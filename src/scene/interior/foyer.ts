@@ -12,7 +12,7 @@ import {
 } from 'three'
 import type { Box } from '../geometry'
 import { CEILING, toX, toZ, unitById } from '../plan'
-import { add, frame, lbox, panel, type Built, type Parts } from './kit'
+import { add, cavity, drawer, frame, lbox, panel, shutter, type Built, type Moving, type Parts } from './kit'
 
 // Foyer, flat 04 on /dmr, on the kitchen's north wall facing the entry: a cane-fronted tall unit over a
 // floating shoe cabinet, a teak bench ending in a turned pillar, ceiling rafters and two brass lanterns.
@@ -51,7 +51,7 @@ function rod(a: Vector3, b: Vector3, r0: number, r1 = r0, sides = 6) {
   return g.translate(a.x, a.y, a.z)
 }
 
-function cabinetry(parts: Parts): Box[] {
+function cabinetry(parts: Parts, moving: Moving[]): Box[] {
   const g = 0.004
   const teak: Box[] = [
     // Top slab, cabinet end panel and the tall unit's frame.
@@ -67,13 +67,17 @@ function cabinetry(parts: Parts): Box[] {
   const w = (CAB - 0.02) / 4
   for (let i = 0; i < 4; i++) {
     const [a, b] = [i * w + g / 2, (i + 1) * w - g / 2]
-    teak.push(lbox(a, b, 0.27 + g / 2, TOP - 0.03 - g, D - 0.02, D), lbox(a, b, 0.1 + g, 0.27 - g / 2, D - 0.02, D))
+    const leaf = [lbox(a, b, 0.27 + g / 2, TOP - 0.03 - g, D - 0.02, D)]
+    moving.push(i % 2 ? shutter(f, leaf, b, D, 'right') : shutter(f, leaf, a, D, 'left'))
+    moving.push(drawer(f, a, b, 0.1 + g, 0.27 - g / 2, D - 0.02, D))
   }
-  const reveal = [lbox(0, CAB - 0.02, 0.1, TOP - 0.03, 0, D - 0.02), lbox(0.02, CAB - 0.02, 0, 0.1, 0, D - 0.1), lbox(0.04, TALL - 0.04, TOP, H, 0, D - 0.04)]
+  const reveal = [lbox(0, CAB - 0.02, 0.1, 0.27, 0, D - 0.02), lbox(0.02, CAB - 0.02, 0, 0.1, 0, D - 0.1), lbox(0.04, TALL - 0.04, TOP, H, 0, D - 0.04)]
+  const cream = [...cavity(0, 2 * w, 0.27, TOP - 0.03, D - 0.02), ...cavity(2 * w, CAB - 0.02, 0.27, TOP - 0.03, D - 0.02)]
   const cane = f.place(panel(TALL - 0.08, H - 0.06 - TOP - 0.04).translate(TALL / 2, TOP + 0.04, D - 0.035))
 
   add(parts, 'teak', f.boxes(teak, 1.4))
   add(parts, 'reveal', f.boxes(reveal))
+  add(parts, 'cream', f.boxes(cream, 2.2))
   add(parts, 'cane', cane)
   return [f.box(lbox(0, CAB, 0, H, 0, D))]
 }
@@ -162,8 +166,9 @@ function jug(parts: Parts) {
 
 export function buildFoyer(): Built {
   const parts: Parts = {}
-  const colliders = [...cabinetry(parts), ...bench(parts)]
+  const moving: Moving[] = []
+  const colliders = [...cabinetry(parts, moving), ...bench(parts)]
   for (const { s, out } of LANTERNS) lantern(parts, s, out)
   jug(parts)
-  return { parts, colliders }
+  return { parts, colliders, moving }
 }

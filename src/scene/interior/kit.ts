@@ -23,12 +23,27 @@ export type Key =
   | 'glass'
   | 'flame'
   | 'twig'
+  | 'cab'
+  | 'verde'
+  | 'gtile'
+  | 'frost'
 
 export type Parts = Partial<Record<Key, BufferGeometry[]>>
+
+/** A drawer or shutter that toggles on interaction: geometry is relative to `pivot`, which slides by `slide` or turns by `yaw`. */
+export interface Moving {
+  geometry: BufferGeometry
+  key: Key
+  noun: 'drawer' | 'shutter'
+  pivot: V3
+  slide?: V3
+  yaw?: number
+}
 
 export interface Built {
   parts: Parts
   colliders: Box[]
+  moving?: Moving[]
 }
 
 export const add = (parts: Parts, key: Key, ...g: BufferGeometry[]) => void (parts[key] ??= []).push(...g)
@@ -91,3 +106,45 @@ export function roundedRect(w: number, h: number, r: number) {
 
 /** Flat rectangle standing on y = 0 with UVs in metres, so repeating textures keep their pitch. */
 export const panel = (w: number, h: number) => new ShapeGeometry(roundedRect(w, h, 0.001)).translate(0, h / 2, 0)
+
+export type Frame = ReturnType<typeof frame>
+
+function moving(f: Frame, boxes: Box[], at: Vector3, rest: Omit<Moving, 'geometry' | 'pivot'>): Moving {
+  const p = at.applyMatrix4(f.m)
+  return { ...rest, geometry: f.boxes(boxes, 1.4).translate(-p.x, -p.y, -p.z), pivot: [p.x, p.y, p.z] }
+}
+
+/** A drawer whose front spans local [s0, s1] × [y0, y1] × [z0, z1], with a box behind it that pulls out by `travel`. */
+export function drawer(f: Frame, s0: number, s1: number, y0: number, y1: number, z0: number, z1: number, travel = 0.3, key: Key = 'teak') {
+  const t = 0.012
+  const [a, b] = [s0 + 0.015, s1 - 0.015]
+  const [bot, top, back] = [y0 + 0.015, y1 - 0.03, z0 - travel - 0.02]
+  const boxes = [
+    lbox(s0, s1, y0, y1, z0, z1),
+    lbox(a, a + t, bot, top, back, z0),
+    lbox(b - t, b, bot, top, back, z0),
+    lbox(a + t, b - t, bot, top, back, back + t),
+    lbox(a + t, b - t, bot, bot + t, back + t, z0),
+  ]
+  const slide = new Vector3(0, 0, 1).transformDirection(f.m).multiplyScalar(travel)
+  return moving(f, boxes, new Vector3((s0 + s1) / 2, y0, z1), { key, noun: 'drawer', slide: [slide.x, slide.y, slide.z] })
+}
+
+/** A shutter hinged on its left or right edge at the front face `z`, swinging out a right angle. */
+export function shutter(f: Frame, boxes: Box[], hinge: number, z: number, side: 'left' | 'right', key: Key = 'teak') {
+  return moving(f, boxes, new Vector3(hinge, 0, z), { key, noun: 'shutter', yaw: side === 'left' ? -Math.PI / 2 : Math.PI / 2 })
+}
+
+/** Open-fronted carcass interior (back, base, top, sides and a mid shelf) behind shutters, z from the wall to `z1`. */
+export function cavity(s0: number, s1: number, y0: number, y1: number, z1: number): Box[] {
+  const t = 0.018
+  const mid = (y0 + y1) / 2
+  return [
+    lbox(s0, s1, y0, y1, 0, 0.015),
+    lbox(s0, s1, y0, y0 + t, 0.015, z1),
+    lbox(s0, s1, y1 - t, y1, 0.015, z1),
+    lbox(s0, s0 + t, y0 + t, y1 - t, 0.015, z1),
+    lbox(s1 - t, s1, y0 + t, y1 - t, 0.015, z1),
+    lbox(s0 + t, s1 - t, mid - t / 2, mid + t / 2, 0.015, z1 - 0.02),
+  ]
+}

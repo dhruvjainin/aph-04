@@ -65,8 +65,8 @@ export interface UnitPlan {
   wood: Rect[]
   /** Downstand beams: plan rect and soffit height. */
   beams: { rect: Rect; soffit: number }[]
-  /** The kitchen gets a tile dado on every side but the open one. */
-  kitchen: { rect: Rect; open: Side }
+  /** The kitchen gets a tile dado on every side but the open one, unless `dado` is false. */
+  kitchen: { rect: Rect; open: Side; dado?: false }
   /** Floor outline (non-overlapping rects). */
   floor: Rect[]
   /** First match wins, so specific rooms precede the open living/dining area. */
@@ -129,7 +129,7 @@ function place(plan: UnitPlan, { anchor: [ax, ay], at: [bx, bz], mirror = false,
     railings: plan.railings.map(rect),
     wood: plan.wood.map(rect),
     beams: plan.beams.map((b) => ({ rect: rect(b.rect), soffit: b.soffit })),
-    kitchen: { rect: rect(plan.kitchen.rect), open: mirror ? FLIP[plan.kitchen.open] : plan.kitchen.open },
+    kitchen: { rect: rect(plan.kitchen.rect), open: mirror ? FLIP[plan.kitchen.open] : plan.kitchen.open, dado: plan.kitchen.dado },
     floor: plan.floor.map(rect),
     rooms: plan.rooms.map((r) => ({ ...r, rect: rect(r.rect) })),
     spawn: { x: toX(X(plan.spawn.x)), z: toZ(Y(plan.spawn.y)), yaw: mirror ? -plan.spawn.yaw : plan.spawn.yaw },

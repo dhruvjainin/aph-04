@@ -203,6 +203,42 @@ export function whiteMarble() {
   })
 }
 
+/** Polished verde marble for the kitchen counters; one repeat = 1 m. */
+export function greenMarble() {
+  const rand = rng(57)
+  return canvasTexture(1024, (ctx, size) => {
+    ctx.fillStyle = rgba(64, 88, 62)
+    ctx.fillRect(0, 0, size, size)
+    clouds(ctx, rand, 0, 0, size, size, 60, [
+      [42, 64, 44, 0.12],
+      [96, 120, 88, 0.1],
+      [74, 98, 70, 0.08],
+    ])
+    soften(ctx, 0, 0, size, size, 3)
+    stoneVeins(ctx, rand, 0, 0, size, size, 5, 'rgba(170,190,160,0.25)', 5, 2)
+    stoneVeins(ctx, rand, 0, 0, size, size, 9, 'rgba(215,228,205,0.45)', 1.4, 0.4)
+  })
+}
+
+/** Handmade-look olive green tiles, 67 × 200 mm stacked vertically; one repeat = 0.6 m (9 × 3). */
+export const GREEN_TILE_REPEAT = 0.6
+export function greenTile() {
+  const rand = rng(61)
+  return tiled(1024, 9, 3, '#b9b49c', 3, (ctx, x, y, w, h) => {
+    const l = 0.82 + rand() * 0.3
+    const g = ctx.createLinearGradient(x, y, x + w * 0.3, y + h)
+    g.addColorStop(0, rgba(92 * l, 118 * l, 74 * l))
+    g.addColorStop(0.5, rgba(78 * l, 104 * l, 62 * l))
+    g.addColorStop(1, rgba(88 * l, 112 * l, 70 * l))
+    ctx.fillStyle = g
+    ctx.fillRect(x, y, w, h)
+    clouds(ctx, rand, x, y, w, h, 6, [
+      [60, 84, 50, 0.12],
+      [120, 146, 100, 0.1],
+    ])
+  })
+}
+
 export function useMaterials() {
   const tex = useTexture(SETS) as Record<keyof typeof SETS, Texture>
 

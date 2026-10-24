@@ -1,7 +1,7 @@
 import { BufferGeometry, CylinderGeometry, LatheGeometry, PlaneGeometry, Vector2 } from 'three'
 import { boxesToGeometry, type Box } from '../geometry'
 import { CEILING, toX, toZ, unitById } from '../plan'
-import { add, type Built, type Parts } from './kit'
+import { add, drawer, frame, type Built, type Parts } from './kit'
 
 // TV unit on the Living's south wall (shared with the Kids Room), flat 04 on /dmr.
 // Local frame, seen from the Living: s runs left → right along the wall (east → west),
@@ -120,8 +120,10 @@ export function buildTvUnit(): Built {
   const o0 = niche
   const o1 = s1 - t
   const fw = (o1 - o0) / 3
-  for (let i = 0; i < 3; i++)
-    teak.push(box(o0 + i * fw + gap / 2, o0 + (i + 1) * fw - gap / 2, y0 + t + gap, y1 - t - gap, d1 - 0.018, d1))
+  const f = frame([XE, 0, ZW], [-1, 0, 0], [0, 0, -1])
+  const drawers = [0, 1, 2].map((i) =>
+    drawer(f, o0 + i * fw + gap / 2, o0 + (i + 1) * fw - gap / 2, y0 + t + gap, y1 - t - gap, d1 - 0.018, d1, 0.28),
+  )
   const reveal = [box(o0, o1, y0 + t, y1 - t, d1 - 0.03, d1 - 0.018)]
 
   // Table lamp on the console above the niche.
@@ -154,5 +156,5 @@ export function buildTvUnit(): Built {
   add(parts, 'reveal', boxesToGeometry(reveal))
   add(parts, 'ceramic', vase)
   add(parts, 'shade', shade)
-  return { parts, colliders: [box(s0, s1, 0, y1, 0, d1)] }
+  return { parts, colliders: [box(s0, s1, 0, y1, 0, d1)], moving: drawers }
 }

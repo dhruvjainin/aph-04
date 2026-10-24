@@ -11,7 +11,7 @@ import {
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { boxesToGeometry, type Box } from '../geometry'
 import { CEILING, FT, toX, toZ, unitById } from '../plan'
-import { add, frame, lbox, merge, panel, roundedRect, type Built, type Key, type Parts } from './kit'
+import { add, cavity, drawer, frame, lbox, merge, panel, roundedRect, shutter, type Built, type Key, type Moving, type Parts } from './kit'
 
 // Dining, flat 04 on /dmr: a crockery wall on the Common Toilet wall, a teak casing around the kitchen
 // opening under the beam, and a six-seat marble table pointing at the crockery wall.
@@ -64,7 +64,7 @@ const CAB = { s0: NICHE, s1: 2.04, top: 0.9, shelf: 1.585, box: 1.29, boxTop: 1.
 const SLATS = { s0: 2.1, s1: 2.55, y0: 0.87, y1: 2.66, recess: 0.03 }
 const ARCHES = { y0: 1.64, y1: 2.68, w: 0.27, at: [1.485, 1.855] }
 
-function crockery(parts: Parts): Box[] {
+function crockery(parts: Parts, moving: Moving[]): Box[] {
   const f = frame([WX, 0, WZ], [-1, 0, 0], [0, 0, -1])
   const { s0, s1, top, shelf, box: b1, boxTop } = CAB
   const q = SLATS
@@ -102,21 +102,23 @@ function crockery(parts: Parts): Box[] {
   const y1 = top - 0.03 - g
   for (let i = 0; i < 4; i++) {
     const [a, b] = [g + (i * y1) / 4, ((i + 1) * y1) / 4 - g]
-    teak.push(lbox(s0 + g, split - g / 2, a, b, D - 0.02, D))
+    moving.push(drawer(f, s0 + g, split - g / 2, a, b, D - 0.02, D))
   }
   const dw = (s1 - split) / 2
   for (let i = 0; i < 2; i++) {
     const [a, b] = [split + i * dw + g / 2, split + (i + 1) * dw - g / 2]
     const R = 0.07
-    teak.push(
+    const leaf = [
       lbox(a, b, g, g + R, D - 0.02, D),
       lbox(a, b, y1 - R, y1, D - 0.02, D),
       lbox(a, a + R, g + R, y1 - R, D - 0.02, D),
       lbox(b - R, b, g + R, y1 - R, D - 0.02, D),
       lbox(a + R, b - R, g + R, y1 - R, D - 0.02, D - 0.01),
-    )
+    ]
+    moving.push(i ? shutter(f, leaf, b, D, 'right') : shutter(f, leaf, a, D, 'left'))
   }
-  const reveal = [lbox(s0, s1, 0, top - 0.03, 0, D - 0.02)]
+  const reveal = [lbox(s0, split, 0, top - 0.03, 0, D - 0.02)]
+  cream.push(...cavity(split, s1, 0, top - 0.03, D - 0.02))
 
   const ledge = f.place(new CylinderGeometry(0.25, 0.25, 0.03, 32, 1, false, -Math.PI / 2, Math.PI).translate(NICHE / 2, 0.9, 0))
   const apron = f.place(new CylinderGeometry(0.25, 0.25, 0.012, 32, 1, false, -Math.PI / 2, Math.PI).rotateX(Math.PI / 2).translate(NICHE / 2, 0.885, 0.006))
@@ -214,5 +216,6 @@ function table(parts: Parts): Box[] {
 
 export function buildDining(): Built {
   const parts: Parts = {}
-  return { parts, colliders: [...casing(parts), ...crockery(parts), ...table(parts)] }
+  const moving: Moving[] = []
+  return { parts, colliders: [...casing(parts), ...crockery(parts, moving), ...table(parts)], moving }
 }
