@@ -179,7 +179,7 @@ export function Interior({ m }: { m: Materials }) {
         roughnessMap: m.wengeLeaf.roughnessMap,
         normalScale: new Vector2(0.3, 0.3),
         roughness: 0.5,
-        color: new Color('#b5583a'),
+        color: new Color('#a06a44'),
       }),
       reveal: new MeshStandardMaterial({ color: new Color('#2a1a14'), roughness: 0.9 }),
       bronze: new MeshStandardMaterial({ color: new Color('#5a4a3a'), metalness: 0.4, roughness: 0.08, transparent: true, opacity: 0.75 }),
