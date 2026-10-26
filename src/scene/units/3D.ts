@@ -44,7 +44,7 @@ export const TYPE_3D: UnitPlan = {
     { rect: [365, 540, 376, 760], openings: [{ from: 542, to: 598, kind: 'door', hinge: 'start', swing: -1, open: true }] },
     { rect: [447, 645, 459, 885], openings: [{ from: 648, to: 695, kind: 'door', hinge: 'start', swing: 1, open: true }] },
     {
-      rect: [627, 592, 638, 1010],
+      rect: [627, 645, 638, 1010],
       openings: [
         { from: 700, to: 742, kind: 'vent', sill: 1.1, head: 2.0 },
         { from: 850, to: 885, kind: 'vent' },
@@ -60,7 +60,7 @@ export const TYPE_3D: UnitPlan = {
     [90, 772, 447, 1010],
     [447, 897, 627, 1010],
   ],
-  beams: [{ rect: [626, 404, 645, 592], soffit: 7 * 0.3048 }],
+  beams: [{ rect: [626, 404, 645, 634], soffit: 7 * 0.3048 }],
   kitchen: { rect: [638, 404, 816, 634], open: 'w' },
   // Excludes the AC ledge and the façade notch.
   floor: [

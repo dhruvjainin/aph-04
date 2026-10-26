@@ -37,7 +37,7 @@ function arch(w: number, h: number) {
 const BX0 = toX(unit.X(626))
 const BX1 = toX(unit.X(645))
 const BZ0 = toZ(unit.Y(404))
-const BZ1 = toZ(unit.Y(592))
+const BZ1 = toZ(unit.Y(634))
 
 function casing(parts: Parts): Box[] {
   const [x0, x1] = [BX0 - 0.015, BX1 + 0.015]

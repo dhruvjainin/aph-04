@@ -21,13 +21,22 @@ const FOYER_S = face(816, 392, [-1, 0], [0, -1])
 const LIVING_N = face(192, 289, [1, 0], [0, 1])
 const LIVING_W = face(192, 527, [0, -1], [1, 0])
 const LIVING_S = face(376, 527, [-1, 0], [0, -1])
+const FOYER_E = face(816, 289, [0, 1], [-1, 0])
+const FOYER_N = face(626, 289, [1, 0], [0, 1])
+const KITCHEN_E = face(816, 404, [0, 1], [-1, 0])
+const KITCHEN_N = face(638, 404, [1, 0], [0, 1])
+const KITCHEN_S = face(816, 634, [-1, 0], [0, -1])
+/** East face of the beam over the kitchen's open west side. */
+const KITCHEN_W = face(645, 634, [0, -1], [1, 0])
 const UTIL_N = face(638, 645, [1, 0], [0, 1])
 const UTIL_E = face(816, 645, [0, 1], [-1, 0])
 const UTIL_S = face(694, 742, [-1, 0], [0, -1])
 const UTIL_W = face(638, 742, [0, -1], [1, 0])
 const FOYER_S_LEN = toX(unit.X(816)) - toX(unit.X(626))
 const UTIL_N_LEN = toX(unit.X(816)) - toX(unit.X(638))
-const UTIL_N_WALL = toZ(unit.Y(645)) - toZ(unit.Y(634))
+const KITCHEN_E_LEN = toZ(unit.Y(634)) - toZ(unit.Y(404))
+const KITCHEN_N_LEN = toX(unit.X(816)) - toX(unit.X(638))
+const BEAM_FACE = toX(unit.X(645)) - toX(unit.X(638))
 
 const point = ({ o, u, n }: Face, s: number, d: number): V2 => [o[0] + u[0] * s + n[0] * d, o[1] + u[1] * s + n[1] * d]
 
@@ -155,11 +164,15 @@ function utility(p: Parts) {
   p.yellow.push(rod(UTIL_E, 1.06, 1.24, 2.04, 0.112, 0.008))
   p.dark.push(onFace(UTIL_E, 1.11, 1.17, 2.18, 2.27, 0.03, 0.09))
   p.yellow.push(rod(UTIL_E, 0.06, 1.08, 2.33, 0.06, 0.012), riser(UTIL_E, 1.08, 2.16, 2.33, 0.06, 0.012))
-  // The supply drops in the NE corner and goes through the N wall to the kitchen.
+  // The supply drops in the NE corner into the N wall and comes out in the kitchen's SE corner.
   const gas = UTIL_N_LEN - 0.06
-  p.yellow.push(riser(UTIL_N, gas, 2.0, 2.33, 0.06, 0.012), disc(UTIL_N, gas, 2.0, -UTIL_N_WALL - 0.03, 0.012, UTIL_N_WALL + 0.09))
+  p.yellow.push(riser(UTIL_N, gas, 2.0, 2.33, 0.06, 0.012), disc(UTIL_N, gas, 2.0, -0.05, 0.012, 0.11))
   p.dark.push(onFace(UTIL_N, gas - 0.016, gas + 0.016, 2.18, 2.21, 0.044, 0.076))
-  p.holes.push(disc(UTIL_N, gas, 2.0, 0, 0.035, 0.002), disc(UTIL_N, gas, 2.0, -UTIL_N_WALL - 0.002, 0.035, 0.002))
+  p.holes.push(disc(UTIL_N, gas, 2.0, 0, 0.035, 0.002))
+  const tap = KITCHEN_E_LEN - 1.0
+  p.yellow.push(rod(KITCHEN_E, tap, KITCHEN_E_LEN, 1.48, 0.03, 0.012), riser(KITCHEN_E, tap, 1.08, 1.48, 0.03, 0.012))
+  p.dark.push(onFace(KITCHEN_E, tap - 0.015, tap + 0.015, 1.04, 1.1, 0.012, 0.05))
+  p.yellow.push(rod(KITCHEN_E, KITCHEN_E_LEN - 0.05, KITCHEN_E_LEN, 1.48, 0.03, 0.017))
   p.yellow.push(riser(UTIL_E, 1.14, 2.16, 2.18, 0.06, 0.012), rod(UTIL_E, 1.17, 1.56, 2.24, 0.06, 0.012))
 
   board(p, UTIL_N, UTIL_N_LEN - 0.13, 1.3, 0.1, 0.086, ['switch', 'switch', 'switch'])
@@ -169,9 +182,62 @@ function utility(p: Parts) {
   floorTrap(p, UTIL_N, 1.95, 0.45)
 }
 
+/** Distribution box: a white lid with a grey latch, and optional vent-hole grids. */
+function mcb(p: Parts, f: Face, s0: number, s1: number, y0: number, y1: number, vents: boolean) {
+  p.plate.push(onFace(f, s0, s1, y0, y1, 0, 0.02))
+  const y = (y0 + y1) / 2
+  p.dark.push(onFace(f, s1 - 0.07, s1 - 0.05, y - 0.012, y + 0.012, 0.02, 0.022))
+  if (!vents) return
+  for (const gy of [y1 - 0.13, y0 + 0.05])
+    for (let r = 0; r < 5; r++)
+      for (let c = 0; c < 8; c++) {
+        const [ds, dy] = [s0 + 0.12 + c * 0.018, gy + r * 0.018]
+        p.dark.push(onFace(f, ds, ds + 0.003, dy, dy + 0.003, 0.02, 0.021))
+      }
+}
+
+function kitchen(p: Parts) {
+  board(p, KITCHEN_E, 1.54, 2.0, 0.086, 0.086, ['socket'])
+  board(p, KITCHEN_E, 1.52, 0.58, 0.086, 0.086, ['socket'])
+  board(p, KITCHEN_E, 2.56, 1.15, 0.12, 0.086, ['socket', 'switch'])
+  p.dark.push(onFace(KITCHEN_E, 3.06, 3.1, 1.98, 2.04, 0, 0.04))
+  board(p, KITCHEN_E, 3.08, 1.88, 0.05, 0.05, ['switch'])
+
+  board(p, KITCHEN_N, 0.59, 1.1, 0.086, 0.086, ['socket'])
+  board(p, KITCHEN_N, 1.8, 1.16, 0.14, 0.086, ['socket', 'socket'])
+
+  // Chimney core-cut, the window switch and the sink plumbing under the window.
+  p.holes.push(disc(KITCHEN_S, 0.12, 2.45, 0, 0.065, 0.002))
+  board(p, KITCHEN_S, 1.57, 1.15, 0.086, 0.086, ['switch'])
+  for (const s of [0.76, 1.01]) p.knobs.push(disc(KITCHEN_S, s, 0.38, 0, 0.013, 0.035))
+  p.knobs.push(disc(KITCHEN_S, 0.88, 0.33, 0, 0.03, 0.02))
+
+  // Sprinkler main: from the foyer through the NE corner, along the N wall and the beam, with a sidewall head.
+  const [y, d, r] = [CEILING - 0.08, 0.05, 0.02]
+  p.orange.push(
+    disc(KITCHEN_N, KITCHEN_N_LEN - d, y, -0.05, r, 0.1),
+    rod(KITCHEN_N, BEAM_FACE + d, KITCHEN_N_LEN - d + r, y, d, r),
+    rod(KITCHEN_W, 0, KITCHEN_E_LEN - d + r, y, d, r),
+    riser(KITCHEN_W, 0.03, y - 0.15, y, d, r),
+  )
+  p.knobs.push(riser(KITCHEN_W, 1.6, y - 0.05, y, d, 0.03))
+  for (const s of [0.7, 1.45, 2.2]) p.metal.push(onFace(KITCHEN_N, s - 0.005, s + 0.005, y, CEILING, d - 0.003, d + 0.003))
+
+  // Ceiling sprinkler and smoke detector.
+  const [sx, sz] = point(KITCHEN_W, 1.4, 0.9)
+  const [dx, dz] = point(KITCHEN_W, 1.3, 1.8)
+  p.knobs.push(new CylinderGeometry(0.04, 0.04, 0.004, 24).translate(sx, CEILING - 0.002, sz))
+  p.orange.push(new CylinderGeometry(0.012, 0.015, 0.03, 12).translate(sx, CEILING - 0.015, sz))
+  p.knobs.push(new CylinderGeometry(0.05, 0.055, 0.045, 32).translate(dx, CEILING - 0.0225, dz))
+}
+
 function fixtures() {
   const p: Parts = { plate: [], modules: [], knobs: [], dark: [], holes: [], metal: [], blue: [], yellow: [], orange: [sprinkler()] }
   board(p, FOYER_S, FOYER_S_LEN - 0.2, 1.25, 0.26, 0.12, ['switch', 'switch', 'switch', 'knob', 'grille'])
+
+  board(p, FOYER_E, 1.17, 1.2, 0.086, 0.086, ['switch', 'switch'])
+  mcb(p, FOYER_N, FOYER_S_LEN - 0.95, FOYER_S_LEN - 0.59, 1.6, 1.96, true)
+  mcb(p, FOYER_N, FOYER_S_LEN - 0.48, FOYER_S_LEN - 0.15, 1.6, 1.92, false)
 
   board(p, LIVING_N, 0.2, 0.33, 0.1, 0.086, ['switch', 'socket'])
   lightPoint(p, LIVING_N, 1.6, 2.2)
@@ -188,7 +254,9 @@ function fixtures() {
   board(p, LIVING_S, 1.27, 0.2, 0.08, 0.086, ['switch'])
   board(p, LIVING_S, 1.38, 0.2, 0.12, 0.086, ['socket', 'switch'])
 
+  sprinklerFittings(p)
   utility(p)
+  kitchen(p)
 
   return {
     plate: boxesToGeometry(p.plate),
@@ -209,6 +277,13 @@ function sprinkler() {
   const [x, z] = point(LIVING_N, 2.27, 0.3)
   const head = new CylinderGeometry(0.02, 0.025, 0.03, 16).translate(x, CEILING - 0.015, z)
   return merge([pipe, head])
+}
+
+/** White fittings on the foyer sprinkler pipe: a sidewall head and collars where it meets the walls. */
+function sprinklerFittings(p: Parts) {
+  const len = toZ(unit.Y(392)) - toZ(unit.Y(289))
+  p.knobs.push(riser(FOYER_E, len * 0.45, CEILING - 0.11, CEILING - 0.06, 0.04, 0.03))
+  for (const s of [0.03, len - 0.03]) p.knobs.push(rod(FOYER_E, s - 0.03, s + 0.03, CEILING - 0.06, 0.04, 0.026))
 }
 
 export function Fixtures() {
