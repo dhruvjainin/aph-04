@@ -56,7 +56,7 @@ export function Lighting({ night, flat }: { night: boolean; flat: UnitId }) {
         <Environment
           files="/hdri/sky.hdr"
           background="only"
-          backgroundIntensity={1.05}
+          backgroundIntensity={1.5}
           backgroundRotation={[0, Math.PI * 0.62, 0]}
         />
       )}
@@ -64,18 +64,18 @@ export function Lighting({ night, flat }: { night: boolean; flat: UnitId }) {
       {/* What lights the rooms: a baked-once interior bounce rig standing in for GI. */}
       <Environment key={`${night ? 'night' : 'day'}-${w}`} resolution={256} frames={1} environmentIntensity={1}>
         <color attach="background" args={[night ? '#1c1a18' : '#b9b2a8']} />
-        <Lightformer form="rect" intensity={1.1 * k} color={night ? '#ffdcb8' : '#f1dfc8'} position={[0, -6, 0]} rotation-x={-Math.PI / 2} scale={[40, 40, 1]} />
-        <Lightformer form="rect" intensity={0.9 * k} color={night ? '#ffe6cc' : '#f7f5f0'} position={[0, 6, 0]} rotation-x={Math.PI / 2} scale={[40, 40, 1]} />
+        <Lightformer form="rect" intensity={0.85 * k} color={night ? '#ffdcb8' : '#eee3d4'} position={[0, -6, 0]} rotation-x={-Math.PI / 2} scale={[40, 40, 1]} />
+        <Lightformer form="rect" intensity={0.6 * k} color={night ? '#ffe6cc' : '#f7f5f0'} position={[0, 6, 0]} rotation-x={Math.PI / 2} scale={[40, 40, 1]} />
         <Lightformer form="rect" intensity={night ? 0.25 : 4} color={night ? '#3b4a6b' : '#eef4ff'} position={[-12 * w, 1.5, -3]} rotation-y={(w * Math.PI) / 2} scale={[14, 2.4, 1]} />
         <Lightformer form="rect" intensity={1.6 * k} color="#e5eefc" position={[12 * w, 1.5, 0]} rotation-y={(-w * Math.PI) / 2} scale={[6, 2.2, 1]} />
-        <Lightformer form="rect" intensity={1.2 * k} color="#fff1df" position={[0, 1.5, -12]} scale={[10, 2.4, 1]} />
-        <Lightformer form="rect" intensity={1.2 * k} color="#fff1df" position={[0, 1.5, 12]} rotation-y={Math.PI} scale={[10, 2.4, 1]} />
+        <Lightformer form="rect" intensity={0.9 * k} color="#fff1df" position={[0, 1.5, -12]} scale={[10, 2.4, 1]} />
+        <Lightformer form="rect" intensity={0.9 * k} color="#fff1df" position={[0, 1.5, 12]} rotation-y={Math.PI} scale={[10, 2.4, 1]} />
       </Environment>
 
       <directionalLight
         ref={light}
         position={[CENTER.x + ox * w * k0, oy * k0, CENTER.z + oz * k0]}
-        intensity={night ? 0.35 : 5.2}
+        intensity={night ? 0.35 : 6}
         color={night ? '#9fb3de' : '#ffe6c7'}
         castShadow
         shadow-mapSize={TOUCH ? [2048, 2048] : [4096, 4096]}

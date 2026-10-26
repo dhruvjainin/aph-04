@@ -74,10 +74,10 @@ export function Apartment({ m }: { m: Materials }) {
           map={m.floorMap}
           roughness={0.2}
           envMapIntensity={0.5}
-          resolution={256}
-          blur={[220, 80]}
-          mixBlur={0.7}
-          mixStrength={0.85}
+          resolution={512}
+          blur={[500, 150]}
+          mixBlur={3}
+          mixStrength={0.75}
           mirror={0.45}
           mixContrast={1}
           depthScale={0}
