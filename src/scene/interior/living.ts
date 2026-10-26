@@ -1,4 +1,5 @@
 import {
+  BoxGeometry,
   BufferGeometry,
   CylinderGeometry,
   ExtrudeGeometry,
@@ -17,7 +18,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { boxesToGeometry, type Box } from '../geometry'
 import { toX, toZ, unitById } from '../plan'
 import { soffitAt } from './ceilings'
-import { add, lbox, merge, roundedRect, type Built, type Parts } from './kit'
+import { add, lbox, merge, roundedRect, type Built, type Moving, type Parts } from './kit'
 
 // Living, flat 04 on /dmr: a cream sofa on the north wall under a night-forest painting, a paper lantern and a
 // potted plant by the curtained slider, a tiled teak coffee table on brass, two grey armchairs facing west
@@ -28,8 +29,6 @@ const unit = unitById('04')
 const X0 = toX(unit.X(192))
 const Z0 = toZ(unit.Y(289))
 const W = toX(unit.X(447)) - X0
-/** North end of the slider, from the north wall. */
-const SLIDER = toZ(unit.Y(326)) - Z0
 
 const SOFA = { x0: 0.8, x1: 2.98, d: 0.95, seat: 0.45, arm: 0.62, back: 0.9 }
 const SOFA_MID = (SOFA.x0 + SOFA.x1) / 2
@@ -170,10 +169,22 @@ function plant(parts: Parts): Box[] {
   return [local(lbox(x - 0.2, x + 0.2, 0, 1.2, z - 0.2, z + 0.2))]
 }
 
-/** A pleated panel hanging along the west wall, `d` off it, from z0 to z1. */
-function curtain(z0: number, z1: number, d: number, pleats: number, amp: number, seed: number) {
-  const top = soffitAt(X0 + 0.05, Z0 + (z0 + z1) / 2) - 0.02
+/** West wall length, north to south face. */
+const LEN = toZ(unit.Y(527)) - Z0
+/** Pelmet: 300 mm deep, the full wall length, open underneath; its bottom is level with the 7 ft slider head. */
+const PELMET = { y0: 7 * 0.3048, d: 0.3, t: 0.018 }
+/** Curtain heads sit 100 mm up inside the pelmet. */
+const RAIL = { drop: 0.1, north: 0.13, south: 0.17 }
+/** Open curtains bunch to this fraction of their drawn width. */
+const GATHER = 0.22
+
+const slab = (x0: number, x1: number, y0: number, y1: number, z0: number, z1: number) =>
+  new BoxGeometry(x1 - x0, y1 - y0, z1 - z0).translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2).applyMatrix4(at(0, 0, 0))
+
+/** A pleated panel from `z0` to `z1` along the west wall, `d` off it, hanging from the rail to the floor; geometry is relative to (wall, 0, `pivotZ`). */
+function curtain(z0: number, z1: number, d: number, seed: number, pivotZ: number, top: number) {
   const w = z1 - z0
+  const pleats = Math.round(w / 0.19)
   const g = new PlaneGeometry(w, top - 0.01, pleats * 8, 6)
   const pos = g.attributes.position
   const rand = rng(seed)
@@ -181,19 +192,41 @@ function curtain(z0: number, z1: number, d: number, pleats: number, amp: number,
   for (let i = 0; i < pos.count; i++) {
     const u = (pos.getX(i) + w / 2) / w
     const col = Math.round(u * pleats * 8)
-    pos.setZ(i, amp * (Math.sin(u * pleats * Math.PI * 2) + jitter[col]))
+    pos.setZ(i, 0.03 * (Math.sin(u * pleats * Math.PI * 2) + jitter[col]))
   }
   g.computeVertexNormals()
-  return g.rotateY(Math.PI / 2).applyMatrix4(at(d, (top + 0.01) / 2, (z0 + z1) / 2))
+  return g.rotateY(Math.PI / 2).translate(d, (top + 0.01) / 2, (z0 + z1) / 2 - pivotZ)
 }
 
-function curtains(parts: Parts) {
-  add(parts, 'sheer', curtain(0.12, SLIDER + 0.85, 0.1, 9, 0.025, 7))
-  add(parts, 'linen', curtain(0.05, 0.55, 0.19, 5, 0.035, 11))
-  // Tassel trim down the linen's leading edge.
-  const beads: BufferGeometry[] = []
-  for (let y = 0.25; y < 2.4; y += 0.075) beads.push(new SphereGeometry(0.012, 8, 6).scale(1, 1.6, 1).applyMatrix4(at(0.19, y, 0.565)))
-  add(parts, 'tassel', ...beads)
+/** Hollow cream box from the slider head to the ceiling along the whole west wall: front and end caps only, with the rails and a COB strip inside. */
+function pelmet(parts: Parts, top: number) {
+  const { y0, d, t } = PELMET
+  add(
+    parts,
+    'cream',
+    slab(d - t, d, y0, top, 0, LEN),
+    slab(0, d - t, y0, top, 0, t),
+    slab(0, d - t, y0, top, LEN - t, LEN),
+  )
+  const rail = top - RAIL.drop
+  add(parts, 'grey', slab(RAIL.north - 0.01, RAIL.north + 0.01, rail, rail + 0.02, t, LEN - t), slab(RAIL.south - 0.01, RAIL.south + 0.01, rail, rail + 0.02, t, LEN - t))
+  add(parts, 'cob', slab(d - t - 0.025, d - t, top - 0.045, top - 0.02, 0.05, LEN - 0.05))
+}
+
+/** Two blackout curtains meeting mid-wall; `E` bunches them to the ends. */
+function curtains(parts: Parts): Moving[] {
+  const top = soffitAt(X0 + 0.05, Z0 + LEN / 2)
+  pelmet(parts, top)
+  const head = top - RAIL.drop
+  const mid = LEN / 2
+  const panel = (z0: number, z1: number, d: number, seed: number, pivotZ: number): Moving => ({
+    key: 'linen',
+    noun: 'curtain',
+    geometry: curtain(z0, z1, d, seed, pivotZ, head),
+    pivot: [X0, 0, Z0 + pivotZ],
+    gather: GATHER,
+  })
+  return [panel(0.02, mid + 0.04, RAIL.north, 11, 0.02), panel(mid - 0.04, LEN - 0.02, RAIL.south, 7, LEN - 0.02)]
 }
 
 // ─── coffee table, side table, armchairs ───────────────────────────────────
@@ -305,7 +338,7 @@ export function buildLiving(): Built {
   const parts: Parts = {}
   painting(parts)
   lantern(parts)
-  curtains(parts)
+  const moving = curtains(parts)
   const colliders = [...sofa(parts), ...plant(parts), ...coffeeTable(parts), ...sideTable(parts), ...armchairs(parts)]
-  return { parts, colliders }
+  return { parts, colliders, moving }
 }

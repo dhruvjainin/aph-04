@@ -215,7 +215,7 @@ function oakTexture() {
   return t
 }
 
-const NO_SHADOW = new Set<Key>(['screen', 'arch', 'disc', 'glass', 'flame', 'frost', 'groove', 'art', 'sheer', 'tassel', 'glow'])
+const NO_SHADOW = new Set<Key>(['screen', 'arch', 'disc', 'glass', 'flame', 'frost', 'groove', 'art', 'cob', 'glow'])
 
 const half = (b: Box) => [(b.max[0] - b.min[0]) / 2, (b.max[1] - b.min[1]) / 2, (b.max[2] - b.min[2]) / 2] as [number, number, number]
 const mid = (b: Box) => [(b.max[0] + b.min[0]) / 2, (b.max[1] + b.min[1]) / 2, (b.max[2] + b.min[2]) / 2] as [number, number, number]
@@ -224,14 +224,21 @@ const mid = (b: Box) => [(b.max[0] + b.min[0]) / 2, (b.max[1] + b.min[1]) / 2, (
 function Movable({ mv, mat }: { mv: Moving; mat: Record<Key, MeshStandardMaterial> }) {
   const group = useRef<Group>(null)
   const meshes = useRef<(Mesh | null)[]>([])
-  const progress = useRef(0)
-  const target = useRef(0)
+  const start = mv.gather ? 1 : 0
+  const progress = useRef(start)
+  const target = useRef(start)
 
   useEffect(() => {
     const list = meshes.current.filter((m): m is Mesh => !!m)
     const handle = { toggle: () => (target.current = target.current > 0.5 ? 0 : 1), isOpen: () => target.current > 0.5, noun: mv.noun }
     list.forEach((m) => doorRegistry.set(m, handle))
     return () => list.forEach((m) => doorRegistry.delete(m))
+  }, [mv])
+
+  useEffect(() => {
+    if (!mv.gather || !group.current) return
+    group.current.scale.z = mv.gather
+    markShadowsDirty()
   }, [mv])
 
   useFrame((_, dt) => {
@@ -241,6 +248,7 @@ function Movable({ mv, mat }: { mv: Moving; mat: Record<Key, MeshStandardMateria
     progress.current += Math.sign(d) * Math.min(Math.abs(d), dt * 2.2)
     const t = progress.current
     const e = t * t * (3 - 2 * t)
+    if (mv.gather) g.scale.z = 1 - (1 - mv.gather) * e
     if (mv.yaw) g.rotation.y = mv.yaw * e
     if (mv.slide) g.position.set(mv.pivot[0] + mv.slide[0] * e, mv.pivot[1] + mv.slide[1] * e, mv.pivot[2] + mv.slide[2] * e)
     markShadowsDirty()
@@ -329,16 +337,9 @@ export function Interior({ m }: { m: Materials }) {
       groove: new MeshStandardMaterial({ color: new Color('#8f8a82'), roughness: 0.9 }),
       grey: new MeshStandardMaterial({ color: new Color('#8d8e8c'), roughness: 0.95 }),
       leaf: new MeshStandardMaterial({ color: new Color('#3f6a2c'), roughness: 0.7, side: DoubleSide }),
-      linen: new MeshStandardMaterial({ color: new Color('#d8cdb8'), roughness: 0.95, side: DoubleSide }),
-      sheer: new MeshStandardMaterial({
-        color: new Color('#f6f3ec'),
-        roughness: 0.9,
-        transparent: true,
-        opacity: 0.55,
-        depthWrite: false,
-        side: DoubleSide,
-      }),
-      tassel: new MeshStandardMaterial({ color: new Color('#c9b48c'), roughness: 0.8 }),
+      // Blackout curtain: 95% opaque, so 5% of the light behind it gets through.
+      linen: new MeshStandardMaterial({ color: new Color('#d8cdb8'), roughness: 0.95, side: DoubleSide, transparent: true, opacity: 0.95 }),
+      cob: new MeshStandardMaterial({ color: new Color('#fff1d6'), emissive: new Color('#ffcf8a'), emissiveIntensity: 1.2 }),
       art: new MeshStandardMaterial({ map: artTexture(), roughness: 0.6 }),
       glow: new MeshStandardMaterial({ color: new Color('#ffffff'), emissive: new Color('#fff6ea'), emissiveIntensity: 0, roughness: 0.4 }),
     }
@@ -347,6 +348,7 @@ export function Interior({ m }: { m: Materials }) {
   const { night } = useUi()
   useEffect(() => {
     mat.glow.emissiveIntensity = night ? 2.5 : 0
+    mat.cob.emissiveIntensity = night ? 4 : 1.2
   }, [mat, night])
 
   useEffect(

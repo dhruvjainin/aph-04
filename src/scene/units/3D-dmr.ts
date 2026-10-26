@@ -28,7 +28,7 @@ export const TYPE_DMR: UnitPlan = {
     { rect: [77, 1010, 638, 1024] },
     // ── vertical ────────────────────────────────────────────────
     { rect: [181, 37, 192, 277], openings: [{ from: 74, to: 240, kind: 'slider' }] },
-    { rect: [181, 289, 192, 527], openings: [{ from: 326, to: 490, kind: 'slider' }] },
+    { rect: [181, 289, 192, 527], openings: [{ from: 326, to: 490, kind: 'slider', head: 7 * 0.3048 }] },
     {
       rect: [77, 540, 90, 1010],
       openings: [

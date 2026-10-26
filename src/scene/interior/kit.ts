@@ -33,8 +33,7 @@ export type Key =
   | 'grey'
   | 'leaf'
   | 'linen'
-  | 'sheer'
-  | 'tassel'
+  | 'cob'
   | 'art'
   | 'mirror'
   | 'glow'
@@ -45,10 +44,12 @@ export type Parts = Partial<Record<Key, BufferGeometry[]>>
 export interface Moving {
   geometry: BufferGeometry
   key: Key
-  noun: 'drawer' | 'shutter'
+  noun: 'drawer' | 'shutter' | 'curtain'
   pivot: V3
   slide?: V3
   yaw?: number
+  /** Curtains: z scale about the pivot when toggled on; they start toggled on. */
+  gather?: number
   /** Further meshes in other materials that move with it and toggle it too. */
   extra?: { key: Key; geometry: BufferGeometry }[]
 }
