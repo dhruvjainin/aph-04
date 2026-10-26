@@ -227,12 +227,17 @@ function kitchen(p: Parts) {
   p.knobs.push(riser(KITCHEN_W, 1.6, y - 0.05, y, d, 0.03))
   for (const s of [0.7, 1.45, 2.2]) p.metal.push(onFace(KITCHEN_N, s - 0.005, s + 0.005, y, CEILING, d - 0.003, d + 0.003))
 
-  // Ceiling sprinkler and smoke detector.
-  const [sx, sz] = point(KITCHEN_W, 1.4, 0.9)
-  const [dx, dz] = point(KITCHEN_W, 1.3, 1.8)
-  p.knobs.push(new CylinderGeometry(0.04, 0.04, 0.004, 24).translate(sx, CEILING - 0.002, sz))
-  p.orange.push(new CylinderGeometry(0.012, 0.015, 0.03, 12).translate(sx, CEILING - 0.015, sz))
-  p.knobs.push(new CylinderGeometry(0.05, 0.055, 0.045, 32).translate(dx, CEILING - 0.0225, dz))
+  ceilingSprinkler(p, point(KITCHEN_W, 1.4, 0.9))
+  smokeDetector(p, point(KITCHEN_W, 1.3, 1.8))
+}
+
+function ceilingSprinkler(p: Parts, [x, z]: [number, number]) {
+  p.knobs.push(new CylinderGeometry(0.04, 0.04, 0.004, 24).translate(x, CEILING - 0.002, z))
+  p.orange.push(new CylinderGeometry(0.012, 0.015, 0.03, 12).translate(x, CEILING - 0.015, z))
+}
+
+function smokeDetector(p: Parts, [x, z]: [number, number]) {
+  p.knobs.push(new CylinderGeometry(0.05, 0.055, 0.045, 32).translate(x, CEILING - 0.0225, z))
 }
 
 function fixtures() {
@@ -251,6 +256,10 @@ function fixtures() {
   board(p, LIVING_N, 3.29, 0.2, 0.1, 0.086, ['socket', 'switch'])
 
   board(p, LIVING_W, 0.3, 1.2, 0.086, 0.086, ['switch'])
+  lightPoint(p, LIVING_W, 1.97, 2.6)
+  ceilingSprinkler(p, point(LIVING_W, 1.72, 1.45))
+  smokeDetector(p, point(LIVING_W, 1.72, 2.2))
+  ceilingSprinkler(p, point(LIVING_W, 1.72, 3.0))
 
   board(p, LIVING_S, 1.0, 0.9, 0.08, 0.086, ['tv'])
   board(p, LIVING_S, 1.15, 0.9, 0.2, 0.086, ['socket', 'switch', 'switch', 'socket'])
