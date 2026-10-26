@@ -149,31 +149,35 @@ function utility(p: Parts) {
   p.orange.push(riser(UTIL_W, 1.33, CEILING - 0.1, CEILING, 0.04, 0.025), rod(UTIL_W, 1.33, 1.41, CEILING - 0.1, 0.04, 0.025))
 
   // Shaft access panel: a light metal door with an oval pull and a key lock.
-  p.metal.push(onFace(UTIL_S, 0.3, 0.78, 1.05, 2.25, 0, 0.012))
-  p.metal.push(onFace(UTIL_S, 0.32, 0.76, 1.07, 2.23, 0.012, 0.018))
+  p.metal.push(onFace(UTIL_S, 0.3, 0.78, 1.0, 2.35, 0, 0.012))
+  p.metal.push(onFace(UTIL_S, 0.32, 0.76, 1.02, 2.33, 0.012, 0.018))
   p.dark.push(onFace(UTIL_S, 0.35, 0.37, 1.8, 1.9, 0.018, 0.019), onFace(UTIL_S, 0.355, 0.365, 1.5, 1.51, 0.018, 0.02))
 
-  board(p, UTIL_E, 0.58, 1.2, 0.22, 0.086, ['socket', 'socket', 'grille'])
-  for (const [s, y] of [[0.78, 0.8], [0.46, 0.46], [1.25, 0.1]]) {
+  board(p, UTIL_E, 0.54, 1.06, 0.22, 0.086, ['socket', 'socket', 'grille'])
+  for (const [s, y] of [[0.67, 0.79], [0.42, 0.48], [1.08, 0.05]]) {
     p.knobs.push(disc(UTIL_E, s, y, 0, 0.04, 0.004), disc(UTIL_E, s, y, 0.004, 0.013, 0.035))
   }
   floorTrap(p, UTIL_E, 1.15, 0.3)
 
-  // Gas meter with its regulator; the supply leaves through the open side.
-  p.blue.push(onFace(UTIL_E, 1.06, 1.24, 2.0, 2.16, 0, 0.11))
-  p.yellow.push(rod(UTIL_E, 1.06, 1.24, 2.04, 0.112, 0.008))
-  p.dark.push(onFace(UTIL_E, 1.11, 1.17, 2.18, 2.27, 0.03, 0.09))
-  p.yellow.push(rod(UTIL_E, 0.06, 1.08, 2.33, 0.06, 0.012), riser(UTIL_E, 1.08, 2.16, 2.33, 0.06, 0.012))
+  // Gas inlet from the open side, valve and regulator, meter, then north along the top of the wall.
+  const g = 2.29
+  p.blue.push(onFace(UTIL_E, 0.95, 1.13, 1.97, 2.2, 0, 0.11))
+  p.yellow.push(rod(UTIL_E, 0.95, 1.13, 2.06, 0.112, 0.008))
+  p.dark.push(onFace(UTIL_E, 1.06, 1.12, 2.22, 2.36, 0.03, 0.09), onFace(UTIL_E, 1.24, 1.26, g, g + 0.05, 0.06, 0.09))
+  p.yellow.push(riser(UTIL_E, 1.09, 2.2, 2.22, 0.06, 0.012), rod(UTIL_E, 1.12, 1.56, g, 0.06, 0.012), riser(UTIL_E, 1.32, 2.2, 2.36, 0.03, 0.008))
+  p.yellow.push(rod(UTIL_E, 0.06, 0.98, g, 0.06, 0.012), riser(UTIL_E, 0.98, 2.2, g, 0.06, 0.012))
+  for (const s of [0.13, 0.82]) p.dark.push(onFace(UTIL_E, s - 0.01, s + 0.01, g - 0.02, g + 0.02, 0.044, 0.076))
   // The supply drops in the NE corner into the N wall and comes out in the kitchen's SE corner.
   const gas = UTIL_N_LEN - 0.06
-  p.yellow.push(riser(UTIL_N, gas, 2.0, 2.33, 0.06, 0.012), disc(UTIL_N, gas, 2.0, -0.05, 0.012, 0.11))
-  p.dark.push(onFace(UTIL_N, gas - 0.016, gas + 0.016, 2.18, 2.21, 0.044, 0.076))
-  p.holes.push(disc(UTIL_N, gas, 2.0, 0, 0.035, 0.002))
+  p.yellow.push(riser(UTIL_N, gas, 1.68, g, 0.06, 0.012), disc(UTIL_N, gas, 1.68, -0.05, 0.012, 0.11))
+  for (const y of [1.85, 2.04]) p.dark.push(onFace(UTIL_N, gas - 0.016, gas + 0.016, y, y + 0.03, 0.044, 0.076))
+  p.holes.push(disc(UTIL_N, gas, 1.68, 0, 0.035, 0.002))
   const tap = KITCHEN_E_LEN - 1.0
   p.yellow.push(rod(KITCHEN_E, tap, KITCHEN_E_LEN, 1.48, 0.03, 0.012), riser(KITCHEN_E, tap, 1.08, 1.48, 0.03, 0.012))
   p.dark.push(onFace(KITCHEN_E, tap - 0.015, tap + 0.015, 1.04, 1.1, 0.012, 0.05))
   p.yellow.push(rod(KITCHEN_E, KITCHEN_E_LEN - 0.05, KITCHEN_E_LEN, 1.48, 0.03, 0.017))
-  p.yellow.push(riser(UTIL_E, 1.14, 2.16, 2.18, 0.06, 0.012), rod(UTIL_E, 1.17, 1.56, 2.24, 0.06, 0.012))
+
+  for (const s of [0.17, 0.25]) p.knobs.push(disc(UTIL_N, UTIL_N_LEN - s, 2.5, 0, 0.012, 0.03))
 
   board(p, UTIL_N, UTIL_N_LEN - 0.13, 1.3, 0.1, 0.086, ['switch', 'switch', 'switch'])
   p.knobs.push(rod(UTIL_N, 1.45, 2.05, 0.45, 0.03, 0.012))
