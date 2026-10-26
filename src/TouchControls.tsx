@@ -7,6 +7,7 @@ const TAP_SLOP = 10
 const TAP_MS = 250
 /** The walk hint shows until the joystick is first used. */
 let walked = false
+let looked = false
 const SEEN = 'f2904.touch-guide'
 
 interface Stick {
@@ -53,6 +54,7 @@ export function TouchControls() {
       touch.move.y = dy / RADIUS
       if (knob.current) knob.current.style.transform = `translate(${dx}px, ${dy}px)`
     } else if (look.current?.id === e.pointerId) {
+      looked = true
       touch.look.dx += e.clientX - look.current.x
       touch.look.dy += e.clientY - look.current.y
       look.current.x = e.clientX
@@ -79,11 +81,22 @@ export function TouchControls() {
             <div className="knob" ref={knob} />
           </div>
         )}
-        {!stick && !walked && !guide && <div className="stick-hint">Drag to walk</div>}
+        {!guide && !stick && (
+          <div className={`stick-hint ${walked ? 'done' : ''}`}>
+            <div className="stick ghost">
+              <div className="knob" />
+            </div>
+            <span>Drag to walk</span>
+          </div>
+        )}
+        {!guide && !looked && <div className="look-hint">Drag to look</div>}
       </div>
       <button className="pause" aria-label="Pause" onClick={() => ui.set({ locked: false })}>
         <span />
         <span />
+      </button>
+      <button className="help" aria-label="How to move" onClick={() => setGuide(true)}>
+        ?
       </button>
       {guide && (
         <div
