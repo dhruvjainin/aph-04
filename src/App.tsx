@@ -33,7 +33,7 @@ function World() {
   return (
     <Physics timeStep="vary" gravity={[0, -9.81, 0]}>
       <Apartment m={m} />
-      <Fixtures />
+      <Fixtures m={m} />
       {DMR && <Interior m={m} />}
       {night && <NightLights m={m} flat={flat} />}
       {dims && <Dimensions flat={flat} />}

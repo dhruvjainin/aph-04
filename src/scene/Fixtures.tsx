@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { Color, CylinderGeometry, MeshStandardMaterial, type BufferGeometry } from 'three'
 import { boxesToGeometry, type Box } from './geometry'
+import { MARBLE_REPEAT, type Materials } from './materials'
 import { merge } from './interior/kit'
 import { CEILING, toX, toZ, unitById } from './plan'
 
@@ -15,6 +16,7 @@ interface Face {
   u: V2
   n: V2
 }
+const point = ({ o, u, n }: Face, s: number, d: number): V2 => [o[0] + u[0] * s + n[0] * d, o[1] + u[1] * s + n[1] * d]
 const face = (px: number, py: number, u: V2, n: V2): Face => ({ o: [toX(unit.X(px)), toZ(unit.Y(py))], u, n })
 
 const FOYER_S = face(816, 392, [-1, 0], [0, -1])
@@ -32,13 +34,23 @@ const UTIL_N = face(638, 645, [1, 0], [0, 1])
 const UTIL_E = face(816, 645, [0, 1], [-1, 0])
 const UTIL_S = face(694, 742, [-1, 0], [0, -1])
 const UTIL_W = face(638, 742, [0, -1], [1, 0])
+const MB_S = face(439, 277, [-1, 0], [0, -1])
+const MB_N = face(192, 37, [1, 0], [0, 1])
+const MB_E = face(499, 162, [0, 1], [-1, 0])
+const MB_W = face(192, 277, [0, -1], [1, 0])
+const DRESS_N = face(499, 37, [1, 0], [0, 1])
+const DRESS_S = face(816, 150, [-1, 0], [0, -1])
+/** Toilet faces sit on the 8 mm wall tile. */
+const tiled = (f: Face): Face => ({ ...f, o: point(f, 0, 0.008) })
+const WC_S = tiled(face(679, 277, [-1, 0], [0, -1]))
+const WC_W = tiled(face(510, 277, [0, -1], [1, 0]))
+const WC_E = tiled(face(679, 162, [0, 1], [-1, 0]))
 const FOYER_S_LEN = toX(unit.X(816)) - toX(unit.X(626))
 const UTIL_N_LEN = toX(unit.X(816)) - toX(unit.X(638))
 const KITCHEN_E_LEN = toZ(unit.Y(634)) - toZ(unit.Y(404))
 const KITCHEN_N_LEN = toX(unit.X(816)) - toX(unit.X(638))
 const BEAM_FACE = toX(unit.X(645)) - toX(unit.X(638))
 
-const point = ({ o, u, n }: Face, s: number, d: number): V2 => [o[0] + u[0] * s + n[0] * d, o[1] + u[1] * s + n[1] * d]
 
 /** Box `s` metres along a face from its left end and `d` metres off it. */
 function onFace(f: Face, s0: number, s1: number, y0: number, y1: number, d0: number, d1: number): Box {
@@ -84,6 +96,8 @@ interface Parts {
   blue: Box[]
   yellow: BufferGeometry[]
   orange: BufferGeometry[]
+  tile: Box[]
+  granite: Box[]
 }
 
 /** Modular plate centred `s` along a face at height `y`, its modules read left → right. */
@@ -240,8 +254,71 @@ function smokeDetector(p: Parts, [x, z]: [number, number]) {
   p.knobs.push(new CylinderGeometry(0.05, 0.055, 0.045, 32).translate(x, CEILING - 0.0225, z))
 }
 
+function masterSuite(p: Parts) {
+  lightPoint(p, MB_S, 0.2 + 1.56, 2.1)
+  board(p, MB_S, 0.2, 1.15, 0.086, 0.086, ['switch'])
+  board(p, MB_S, 0.52, 0.55, 0.086, 0.086, ['switch'])
+  board(p, MB_S, 0.72, 0.55, 0.14, 0.086, ['socket', 'dimmer'])
+  board(p, MB_S, 2.95, 0.45, 0.086, 0.086, ['socket'])
+  board(p, MB_S, 3.07, 0.45, 0.086, 0.086, ['switch'])
+  // Sprinkler branch from the east corner over the door, ending in a sidewall head.
+  const [y, d, r] = [CEILING - 0.08, 0.05, 0.02]
+  p.orange.push(rod(MB_S, -0.87, 1.32, y, d, r))
+  p.knobs.push(riser(MB_S, 1.32, y - 0.05, y, d, 0.03))
+  for (const s of [0.2, 1.2]) p.metal.push(onFace(MB_S, s - 0.005, s + 0.005, y, CEILING, d - 0.003, d + 0.003))
+
+  lightPoint(p, MB_N, 1.7, 2.1)
+  board(p, MB_N, 1.63, 0.9, 0.06, 0.086, ['tv'])
+  board(p, MB_N, 1.82, 0.9, 0.2, 0.086, ['socket', 'switch', 'socket'])
+  board(p, MB_N, 0.26, 0.25, 0.14, 0.086, ['socket', 'socket'])
+  board(p, MB_N, 0.42, 0.25, 0.06, 0.086, ['switch'])
+  lightPoint(p, MB_E, 0.83, 2.2)
+  lightPoint(p, MB_W, 1.74, 2.6)
+  ceilingSprinkler(p, point(MB_S, 1.8, 1.0))
+  smokeDetector(p, point(MB_S, 1.36, 1.74))
+
+  board(p, DRESS_S, 3.92, 1.2, 0.086, 0.086, ['switch', 'switch'])
+  lightPoint(p, DRESS_S, 1.5, 2.2)
+  lightPoint(p, DRESS_N, 2.3, 2.2)
+  board(p, DRESS_N, 4.0, 1.2, 0.12, 0.086, ['socket', 'switch'])
+  smokeDetector(p, point(DRESS_S, 2.3, 0.83))
+  ceilingSprinkler(p, point(DRESS_S, 1.3, 0.83))
+
+  // Tiled concealed-cistern box with its flush plate and the WC pan holes.
+  p.tile.push(onFace(WC_S, 1.3, 1.9, 0, 1.1, 0, 0.2))
+  p.granite.push(onFace(WC_S, 1.3, 1.9, 1.1, 1.12, 0, 0.21))
+  p.plate.push(onFace(WC_S, 1.49, 1.71, 0.78, 0.93, 0.2, 0.207))
+  p.dark.push(onFace(WC_S, 1.595, 1.605, 0.79, 0.92, 0.207, 0.208))
+  p.holes.push(disc(WC_S, 1.6, 0.25, 0.2, 0.05, 0.002), disc(WC_S, 1.6, 0.45, 0.2, 0.015, 0.002))
+
+  // Black granite vanity across the west wall with a white undermount basin.
+  p.granite.push(onFace(WC_W, 0, 1.67, 0.79, 0.82, 0, 0.55))
+  p.plate.push(onFace(WC_W, 0.93, 1.37, 0.62, 0.79, 0.07, 0.41), onFace(WC_W, 0.95, 1.35, 0.82, 0.8205, 0.09, 0.39))
+  const [tx, tz] = point(WC_W, 1.15, 0.47)
+  p.holes.push(new CylinderGeometry(0.018, 0.018, 0.002, 16).translate(tx, 0.821, tz))
+  lightPoint(p, WC_W, 1.15, 2.2)
+
+  // East vent: exhaust fan in a fixed top panel over louvres, inside the reveal.
+  const [v0, v1, b, h, t] = [(168 - 162) / 69, (205 - 162) / 69, 1.55, 2.1, 1.92]
+  const frame = (s0: number, s1: number, y0: number, y1: number) => p.plate.push(onFace(WC_E, s0, s1, y0, y1, -0.06, -0.02))
+  frame(v0, v1, b, b + 0.03)
+  frame(v0, v1, h - 0.03, h)
+  frame(v0, v0 + 0.03, b, h)
+  frame(v1 - 0.03, v1, b, h)
+  frame(v0 + 0.03, v1 - 0.03, t - 0.02, t)
+  p.plate.push(onFace(WC_E, v0 + 0.03, v1 - 0.03, t, h - 0.03, -0.05, -0.04))
+  p.knobs.push(disc(WC_E, (v0 + v1) / 2, (t + h - 0.03) / 2, -0.04, 0.07, 0.02))
+  for (let i = 0; i < 4; i++) {
+    const y0 = b + 0.04 + i * 0.085
+    p.plate.push(onFace(WC_E, v0 + 0.03, v1 - 0.03, y0, y0 + 0.07, -0.05, -0.04))
+  }
+  p.dark.push(onFace(WC_E, v0 + 0.03, v1 - 0.03, b + 0.03, t - 0.02, -0.08, -0.075))
+  p.knobs.push(disc(WC_E, 0.6, 1.0, 0, 0.035, 0.008), disc(WC_E, 0.6, 1.0, 0.008, 0.012, 0.03))
+  floorTrap(p, WC_E, 1.45, 0.25)
+}
+
 function fixtures() {
-  const p: Parts = { plate: [], modules: [], knobs: [], dark: [], holes: [], metal: [], blue: [], yellow: [], orange: [sprinkler()] }
+  const p: Parts = { plate: [], modules: [], knobs: [], dark: [], holes: [], metal: [], blue: [], yellow: [], orange: [sprinkler()], tile: [], granite: [] }
   board(p, FOYER_S, FOYER_S_LEN - 0.2, 1.25, 0.26, 0.12, ['switch', 'switch', 'switch', 'knob', 'grille'])
 
   board(p, FOYER_E, 1.17, 1.2, 0.086, 0.086, ['switch', 'switch'])
@@ -270,6 +347,7 @@ function fixtures() {
   sprinklerFittings(p)
   utility(p)
   kitchen(p)
+  masterSuite(p)
 
   return {
     plate: boxesToGeometry(p.plate),
@@ -279,6 +357,8 @@ function fixtures() {
     blue: boxesToGeometry(p.blue),
     yellow: merge(p.yellow),
     pipe: merge(p.orange),
+    tile: boxesToGeometry(p.tile, { uvScale: MARBLE_REPEAT }),
+    granite: boxesToGeometry(p.granite),
   }
 }
 
@@ -299,7 +379,7 @@ function sprinklerFittings(p: Parts) {
   for (const s of [0.03, len - 0.03]) p.knobs.push(rod(FOYER_E, s - 0.03, s + 0.03, CEILING - 0.06, 0.04, 0.026))
 }
 
-export function Fixtures() {
+export function Fixtures({ m }: { m: Materials }) {
   const { geo, mat } = useMemo(
     () => ({
       geo: fixtures(),
@@ -311,6 +391,7 @@ export function Fixtures() {
         blue: new MeshStandardMaterial({ color: new Color('#2f6db3'), roughness: 0.4 }),
         yellow: new MeshStandardMaterial({ color: new Color('#e9b51f'), roughness: 0.4 }),
         pipe: new MeshStandardMaterial({ color: new Color('#e2672a'), roughness: 0.45 }),
+        granite: new MeshStandardMaterial({ color: new Color('#1e1f22'), roughness: 0.25 }),
       },
     }),
     [],
@@ -333,6 +414,8 @@ export function Fixtures() {
       <mesh geometry={geo.blue} material={mat.blue} castShadow receiveShadow />
       <mesh geometry={geo.yellow} material={mat.yellow} castShadow receiveShadow />
       <mesh geometry={geo.pipe} material={mat.pipe} castShadow receiveShadow />
+      <mesh geometry={geo.tile} material={m.marble} castShadow receiveShadow />
+      <mesh geometry={geo.granite} material={mat.granite} castShadow receiveShadow />
     </>
   )
 }
