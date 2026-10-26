@@ -14,12 +14,13 @@ import { Player } from './scene/Player'
 import { Minimap } from './Minimap'
 import { Runjhun } from './scene/Runjhun'
 import { DMR, UNITS, unitById, type UnitId } from './scene/plan'
+import { WallLabels } from './scene/WallLabels'
 import { TouchControls } from './TouchControls'
 import { closeMenu, player, TOUCH, ui, useUi, WALL_PAINTS } from './store'
 
 function World() {
   const m = useMaterials()
-  const { night, dims, flat, paint } = useUi()
+  const { night, dims, debug, flat, paint } = useUi()
   useEffect(() => {
     m.wall.color.set(paint)
   }, [m, paint])
@@ -34,6 +35,7 @@ function World() {
       {DMR && <Interior m={m} />}
       {night && <NightLights m={m} flat={flat} />}
       {dims && <Dimensions flat={flat} />}
+      {import.meta.env.DEV && debug && <WallLabels flat={flat} />}
       {UNITS.map((u) => (
         <Runjhun key={u.id} unit={u} />
       ))}
@@ -91,6 +93,7 @@ function Hud() {
       if (e.code === 'KeyM') setMap((v) => !v)
       if (e.code === 'KeyN') ui.set({ night: !ui.get().night })
       if (e.code === 'KeyT') ui.set({ dims: !ui.get().dims })
+      if (import.meta.env.DEV && e.code === 'KeyL') ui.set({ debug: !ui.get().debug })
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -152,6 +155,7 @@ function Hud() {
             <li><kbd>M</kbd> toggle plan</li>
             <li><kbd>N</kbd> day / night</li>
             <li><kbd>T</kbd> wall dimensions</li>
+            {import.meta.env.DEV && <li><kbd>L</kbd> wall labels (dev)</li>}
             <li><kbd>E</kbd> / click Runjhun, the interior designer, to talk</li>
             <li><kbd>Esc</kbd> pause</li>
           </ul>

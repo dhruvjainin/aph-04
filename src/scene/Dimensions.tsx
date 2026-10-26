@@ -28,7 +28,7 @@ function hasWall([x0, y0, x1, y1]: number[], side: Side) {
   })
 }
 
-function labelTexture(text: string) {
+export function labelTexture(text: string, bg = 'rgba(24, 26, 30, 0.9)', fg = '#f6f3ec') {
   const H = 96
   const c = document.createElement('canvas')
   const ctx = c.getContext('2d')!
@@ -37,11 +37,11 @@ function labelTexture(text: string) {
   c.width = Math.ceil(ctx.measureText(text).width + 64)
   c.height = H
   ctx.font = font
-  ctx.fillStyle = 'rgba(24, 26, 30, 0.9)'
+  ctx.fillStyle = bg
   ctx.beginPath()
   ctx.roundRect(0, 0, c.width, H, H / 2)
   ctx.fill()
-  ctx.fillStyle = '#f6f3ec'
+  ctx.fillStyle = fg
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText(text, c.width / 2, H / 2 + 2)
