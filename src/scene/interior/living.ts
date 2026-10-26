@@ -34,11 +34,11 @@ const SLIDER = toZ(unit.Y(326)) - Z0
 const SOFA = { x0: 0.8, x1: 2.98, d: 0.95, seat: 0.45, arm: 0.62, back: 0.9 }
 const SOFA_MID = (SOFA.x0 + SOFA.x1) / 2
 const ART = { x: SOFA_MID - 0.3, w: 1.1, y0: 1.0, y1: 2.35 }
-const TABLE = { x: SOFA_MID, z: SOFA.d + 0.42 + 0.33, cols: 3, rows: 2, w: 0.4, d: 0.32, gap: 0.015 }
+const TABLE = { x: SOFA_MID - 0.24, z: SOFA.d + 0.42 + 0.33, cols: 3, rows: 2, w: 0.4, d: 0.32, gap: 0.015 }
 const SIDE = { x: 3.24, z: 0.32, r: 0.2, h: 0.56 }
 const PLANT = { x: 0.5, z: 0.42 }
 const LANTERN = { x: 0.62, z: 0.82, y: 1.78, r: 0.27 }
-const CHAIRS = [1.32, 2.04].map((z) => ({ x: W - 0.36, z }))
+const CHAIRS = [1.32, 2.04].map((z) => ({ x: W - 0.7, z }))
 
 const at = (x: number, y: number, z: number) => new Matrix4().makeTranslation(X0 + x, y, Z0 + z)
 const local = (b: Box): Box => ({ min: [X0 + b.min[0], b.min[1], Z0 + b.min[2]], max: [X0 + b.max[0], b.max[1], Z0 + b.max[2]] })

@@ -1,6 +1,6 @@
 import { BufferGeometry, ExtrudeGeometry, Path, Shape } from 'three'
 import { boxesToGeometry, type Box } from '../geometry'
-import { CEILING, DMR, toX, toZ, unitById, type Rect } from '../plan'
+import { CEILING, DMR, FT, toX, toZ, unitById, type Rect } from '../plan'
 import { add, type Built, type Key, type Parts } from './kit'
 
 // False ceilings in flat 04 on /dmr. Each is a stack of rings: ring i fills the hole of ring i - 1 (the room
@@ -21,8 +21,6 @@ interface Coffer {
   rect: Rect
   key: Key
   steps: Step[]
-  /** Tints the exposed slab inside the innermost hole. */
-  slab?: Key
   /** Shadow grooves on the slab, as [columns, rows]. */
   grid?: [number, number]
 }
@@ -37,14 +35,28 @@ const LIVING: Coffer = {
   grid: [4, 3],
 }
 
-const MASTER: Coffer = {
-  rect: [192, 37, 499, 277],
-  key: 'terracotta',
-  steps: [{ inset: [0.45, 0.45, 0.45, 0.45], r: 0, y: 2.42 }],
-  slab: 'terracotta',
+const COFFERS = [LIVING]
+
+/** A painted ceiling carried down the walls as a band; walls are [x0, y0, x1, y1] lines on the room-side faces in plan px. */
+interface Painted {
+  rect: Rect
+  key: Key
+  band: number
+  walls: Rect[]
 }
 
-const COFFERS = [LIVING, MASTER]
+/** Master Bedroom: a flat terracotta ceiling with a 1 ft band down the walls (the open side to the dress is left bare). */
+const MASTER: Painted = {
+  rect: [192, 37, 499, 277],
+  key: 'terracotta',
+  band: FT,
+  walls: [
+    [192, 37, 499, 37],
+    [192, 37, 192, 277],
+    [192, 277, 499, 277],
+    [499, 162, 499, 277],
+  ],
+}
 
 const bounds = ({ rect: [x0, y0, x1, y1] }: Coffer) => [toX(unit.X(x0)), toZ(unit.Y(y0)), toX(unit.X(x1)), toZ(unit.Y(y1))]
 
@@ -98,8 +110,29 @@ function ring(outer: number[], r0: number, inner: number[], r1: number, y: numbe
     .translate(0, CEILING, 0)
 }
 
+function painted(parts: Parts, { rect: [px0, py0, px1, py1], key, band, walls }: Painted) {
+  const [x0, z0, x1, z1] = [toX(unit.X(px0)), toZ(unit.Y(py0)), toX(unit.X(px1)), toZ(unit.Y(py1))]
+  const [lx, hx, lz, hz] = [Math.min(x0, x1), Math.max(x0, x1), Math.min(z0, z1), Math.max(z0, z1)]
+  const t = 0.0015
+  const [y0, y1] = [CEILING - band, CEILING - t]
+  const boxes: Box[] = [{ min: [lx + t, y1, lz + t], max: [hx - t, CEILING - 0.0005, hz - t] }]
+  for (const [a0, b0, a1, b1] of walls) {
+    const [wx0, wz0, wx1, wz1] = [toX(unit.X(a0)), toZ(unit.Y(b0)), toX(unit.X(a1)), toZ(unit.Y(b1))]
+    if (wz0 === wz1) {
+      // Offset off the wall into the room, towards the room's middle.
+      const z = wz0 + (wz0 === lz ? 0.0005 : -0.0015)
+      boxes.push({ min: [Math.min(wx0, wx1), y0, z], max: [Math.max(wx0, wx1), y1, z + 0.001] })
+    } else {
+      const x = wx0 + (wx0 === lx ? 0.0005 : -0.0015)
+      boxes.push({ min: [x, y0, Math.min(wz0, wz1)], max: [x + 0.001, y1, Math.max(wz0, wz1)] })
+    }
+  }
+  add(parts, key, boxesToGeometry(boxes))
+}
+
 export function buildCeilings(): Built {
   const parts: Parts = {}
+  painted(parts, MASTER)
   for (const c of COFFERS) {
     let outer = bounds(c)
     let r = 0
@@ -109,8 +142,6 @@ export function buildCeilings(): Built {
       ;[outer, r] = [h, s.r]
     }
     const [x0, z0, x1, z1] = outer
-    const y = CEILING - 0.003
-    if (c.slab) add(parts, c.slab, boxesToGeometry([{ min: [x0, y, z0], max: [x1, CEILING - 0.0005, z1] }]))
     if (c.grid) {
       const [cols, rows] = c.grid
       const [g, y0] = [0.005, CEILING - 0.002]

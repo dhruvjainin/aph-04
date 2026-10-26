@@ -36,6 +36,7 @@ export type Key =
   | 'sheer'
   | 'tassel'
   | 'art'
+  | 'mirror'
 
 export type Parts = Partial<Record<Key, BufferGeometry[]>>
 
@@ -47,6 +48,8 @@ export interface Moving {
   pivot: V3
   slide?: V3
   yaw?: number
+  /** Further meshes in other materials that move with it and toggle it too. */
+  extra?: { key: Key; geometry: BufferGeometry }[]
 }
 
 export interface Built {
@@ -142,6 +145,16 @@ export function drawer(f: Frame, s0: number, s1: number, y0: number, y1: number,
 /** A shutter hinged on its left or right edge at the front face `z`, swinging out a right angle. */
 export function shutter(f: Frame, boxes: Box[], hinge: number, z: number, side: 'left' | 'right', key: Key = 'teak') {
   return moving(f, boxes, new Vector3(hinge, 0, z), { key, noun: 'shutter', yaw: side === 'left' ? -Math.PI / 2 : Math.PI / 2 })
+}
+
+/** A shutter in several materials: boxes are built in the frame, other geometry is already in frame coordinates. The first piece leads. */
+export function shutterParts(f: Frame, pieces: [Key, Box[] | BufferGeometry][], hinge: number, z: number, side: 'left' | 'right'): Moving {
+  const p = new Vector3(hinge, 0, z).applyMatrix4(f.m)
+  const [main, ...extra] = pieces.map(([key, g]) => ({
+    key,
+    geometry: (Array.isArray(g) ? f.boxes(g, 1.4) : f.place(g)).translate(-p.x, -p.y, -p.z),
+  }))
+  return { ...main, noun: 'shutter', pivot: [p.x, p.y, p.z], yaw: side === 'left' ? -Math.PI / 2 : Math.PI / 2, extra }
 }
 
 /** Open-fronted carcass interior (back, base, top, sides and a mid shelf) behind shutters, z from the wall to `z1`. */

@@ -6,6 +6,7 @@ import { doorRegistry, markShadowsDirty } from '../store'
 import type { Box } from './geometry'
 import { buildCeilings } from './interior/ceilings'
 import { buildDining } from './interior/dining'
+import { buildDress } from './interior/dress'
 import { buildFoyer } from './interior/foyer'
 import { buildKitchen } from './interior/kitchen'
 import { merge, type Key, type Moving } from './interior/kit'
@@ -192,17 +193,17 @@ const half = (b: Box) => [(b.max[0] - b.min[0]) / 2, (b.max[1] - b.min[1]) / 2, 
 const mid = (b: Box) => [(b.max[0] + b.min[0]) / 2, (b.max[1] + b.min[1]) / 2, (b.max[2] + b.min[2]) / 2] as [number, number, number]
 
 /** A drawer or shutter: toggled through the door registry, eased like the doors. */
-function Movable({ mv, material }: { mv: Moving; material: MeshStandardMaterial }) {
+function Movable({ mv, mat }: { mv: Moving; mat: Record<Key, MeshStandardMaterial> }) {
   const group = useRef<Group>(null)
-  const mesh = useRef<Mesh>(null)
+  const meshes = useRef<(Mesh | null)[]>([])
   const progress = useRef(0)
   const target = useRef(0)
 
   useEffect(() => {
-    const m = mesh.current
-    if (!m) return
-    doorRegistry.set(m, { toggle: () => (target.current = target.current > 0.5 ? 0 : 1), isOpen: () => target.current > 0.5, noun: mv.noun })
-    return () => void doorRegistry.delete(m)
+    const list = meshes.current.filter((m): m is Mesh => !!m)
+    const handle = { toggle: () => (target.current = target.current > 0.5 ? 0 : 1), isOpen: () => target.current > 0.5, noun: mv.noun }
+    list.forEach((m) => doorRegistry.set(m, handle))
+    return () => list.forEach((m) => doorRegistry.delete(m))
   }, [mv])
 
   useFrame((_, dt) => {
@@ -219,7 +220,9 @@ function Movable({ mv, material }: { mv: Moving; material: MeshStandardMaterial 
 
   return (
     <group ref={group} position={mv.pivot}>
-      <mesh ref={mesh} geometry={mv.geometry} material={material} castShadow receiveShadow />
+      {[mv, ...(mv.extra ?? [])].map((p, i) => (
+        <mesh key={i} ref={(m) => void (meshes.current[i] = m)} geometry={p.geometry} material={mat[p.key]} castShadow receiveShadow />
+      ))}
     </group>
   )
 }
@@ -227,7 +230,7 @@ function Movable({ mv, material }: { mv: Moving; material: MeshStandardMaterial 
 /** Furniture and fit-out, mounted on /dmr only: one merged mesh per material, plus drawers and shutters that open. */
 export function Interior({ m }: { m: Materials }) {
   const built = useMemo(() => {
-    const pieces = [buildTvUnit(), buildDining(), buildFoyer(), buildKitchen(), buildLiving(), buildCeilings()]
+    const pieces = [buildTvUnit(), buildDining(), buildFoyer(), buildKitchen(), buildLiving(), buildDress(), buildCeilings()]
     const lists: Partial<Record<Key, Parameters<typeof merge>[0]>> = {}
     for (const { parts } of pieces)
       for (const [k, g] of Object.entries(parts) as [Key, Parameters<typeof merge>[0]][]) (lists[k] ??= []).push(...g)
@@ -300,7 +303,8 @@ export function Interior({ m }: { m: Materials }) {
         side: DoubleSide,
       }),
       paint: new MeshStandardMaterial({ color: new Color('#f5f4f1'), roughness: 0.96 }),
-      terracotta: new MeshStandardMaterial({ color: new Color('#c56f4c'), roughness: 0.9 }),
+      terracotta: new MeshStandardMaterial({ color: new Color('#a87b58'), roughness: 0.92 }),
+      mirror: new MeshStandardMaterial({ color: new Color('#a9b0b2'), metalness: 0.9, roughness: 0.12, envMapIntensity: 0.55 }),
       groove: new MeshStandardMaterial({ color: new Color('#8f8a82'), roughness: 0.9 }),
       grey: new MeshStandardMaterial({ color: new Color('#8d8e8c'), roughness: 0.95 }),
       leaf: new MeshStandardMaterial({ color: new Color('#3f6a2c'), roughness: 0.7, side: DoubleSide }),
@@ -321,7 +325,7 @@ export function Interior({ m }: { m: Materials }) {
   useEffect(
     () => () => {
       built.meshes.forEach(([, g]) => g.dispose())
-      built.moving.forEach((mv) => mv.geometry.dispose())
+      built.moving.forEach((mv) => [mv, ...(mv.extra ?? [])].forEach((p) => p.geometry.dispose()))
       for (const [k, x] of Object.entries(mat)) {
         if (k !== 'teak') x.map?.dispose()
         x.dispose()
@@ -336,7 +340,7 @@ export function Interior({ m }: { m: Materials }) {
         <mesh key={k} geometry={g} material={mat[k]} castShadow={!NO_SHADOW.has(k)} receiveShadow={k !== 'screen'} />
       ))}
       {built.moving.map((mv, i) => (
-        <Movable key={i} mv={mv} material={mat[mv.key]} />
+        <Movable key={i} mv={mv} mat={mat} />
       ))}
       <RigidBody type="fixed" colliders={false}>
         {built.colliders.map((b, i) => (

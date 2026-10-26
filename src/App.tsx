@@ -38,9 +38,10 @@ function World() {
       {night && <NightLights m={m} flat={flat} />}
       {dims && <Dimensions flat={flat} />}
       {labels && <WallLabels flat={flat} />}
-      {UNITS.map((u) => (
-        <Runjhun key={u.id} unit={u} />
-      ))}
+      {!DMR &&
+        UNITS.map((u) => (
+          <Runjhun key={u.id} unit={u} />
+        ))}
       <Player />
     </Physics>
   )
@@ -158,7 +159,7 @@ function Hud() {
             <li><kbd>N</kbd> day / night</li>
             <li><kbd>T</kbd> wall dimensions</li>
             <li><kbd>L</kbd> wall labels</li>
-            <li><kbd>E</kbd> / click Runjhun, the interior designer, to talk</li>
+            {!DMR && <li><kbd>E</kbd> / click Runjhun, the interior designer, to talk</li>}
             <li><kbd>Esc</kbd> pause</li>
           </ul>
           )}
