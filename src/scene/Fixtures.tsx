@@ -45,6 +45,8 @@ const tiled = (f: Face): Face => ({ ...f, o: point(f, 0, 0.008) })
 const WC_S = tiled(face(679, 277, [-1, 0], [0, -1]))
 const WC_W = tiled(face(510, 277, [0, -1], [1, 0]))
 const WC_E = tiled(face(679, 162, [0, 1], [-1, 0]))
+const PASSAGE_S = face(447, 760, [-1, 0], [0, -1])
+const PASSAGE_E = face(447, 645, [0, 1], [-1, 0])
 const FOYER_S_LEN = toX(unit.X(816)) - toX(unit.X(626))
 const UTIL_N_LEN = toX(unit.X(816)) - toX(unit.X(638))
 const KITCHEN_E_LEN = toZ(unit.Y(634)) - toZ(unit.Y(404))
@@ -348,6 +350,11 @@ function fixtures() {
   utility(p)
   kitchen(p)
   masterSuite(p)
+
+  const passage = toX(unit.X(447)) - toX(unit.X(376))
+  p.orange.push(rod(PASSAGE_S, 0, passage, CEILING - 0.06, 0.04, 0.02))
+  ceilingSprinkler(p, point(PASSAGE_S, passage / 2, 0.5))
+  board(p, PASSAGE_E, 0.84, 1.2, 0.086, 0.086, ['switch'])
 
   return {
     plate: boxesToGeometry(p.plate),
