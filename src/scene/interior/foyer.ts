@@ -35,6 +35,9 @@ const PILLAR = { s: L - 0.25, out: 0.41 }
 const RAFTERS = [0.4, 1.1, 1.8, PILLAR.s]
 const LANTERNS = [0.75, 2.15].map((s) => ({ s, out: 0.6 }))
 
+/** Where the lanterns hang, in world metres. */
+export const LANTERN_AT = LANTERNS.map(({ s, out }) => ({ x: WX - s, z: WZ - out }))
+
 const f = frame([WX, 0, WZ], [-1, 0, 0], [0, 0, -1])
 const lathe = (pts: number[][], segments = 32) => new LatheGeometry(pts.map(([r, y]) => new Vector2(r, y)), segments)
 

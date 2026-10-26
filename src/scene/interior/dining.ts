@@ -14,7 +14,7 @@ import { CEILING, FT, toX, toZ, unitById } from '../plan'
 import { add, cavity, drawer, frame, lbox, merge, panel, roundedRect, shutter, type Built, type Key, type Moving, type Parts } from './kit'
 
 // Dining, flat 04 on /dmr: a crockery wall on the Common Toilet wall, a teak casing around the kitchen
-// opening under the beam, and a six-seat marble table pointing at the crockery wall.
+// opening under the beam, and a six-seat marble table pointing at the crockery wall (the ceiling fan is in electrics.ts).
 
 const unit = unitById('04')
 const SOFFIT = 7 * FT
@@ -141,7 +141,7 @@ function crockery(parts: Parts, moving: Moving[]): Box[] {
   return [f.box(lbox(s0, L, 0, H, 0, D)), f.box(lbox(0, NICHE, 0, 0.92, 0, 0.25))]
 }
 
-// ─── table, chairs and pendant ─────────────────────────────────────────────
+// ─── table and chairs ─────────────────────────────────────────────
 
 const TABLE = { l: 1.5, w: 0.9, h: 0.745 }
 /** Centred across the Dining, its south end chair clearing the crockery wall. */
@@ -189,20 +189,10 @@ function table(parts: Parts): Box[] {
   ]
   const at = ([x, z, yaw]: (typeof seats)[number]) => new Matrix4().makeRotationY(yaw).setPosition(x, 0, z)
 
-  // Two offset discs on long rods.
-  const discs = [
-    { dz: -0.07, y: 1.62, r: 0.32 },
-    { dz: 0.09, y: 1.52, r: 0.26 },
-  ]
-  const disc = discs.map(({ dz, y, r }) => new CylinderGeometry(r, r, 0.012, 48).translate(TX, y, TZ + dz))
-  const rods = discs.map(({ dz, y }) => new CylinderGeometry(0.004, 0.004, CEILING - y, 6).translate(TX, (CEILING + y) / 2, TZ + dz))
-
   const pieces: [Key, BufferGeometry[]][] = [
     ['marble', [top]],
     ['teak', [base, ...seats.map((p) => c.wood.clone().applyMatrix4(at(p)))]],
     ['fabric', seats.map((p) => c.fabric.clone().applyMatrix4(at(p)))],
-    ['disc', disc],
-    ['bezel', rods],
   ]
   for (const [k, g] of pieces) add(parts, k, ...g)
   c.wood.dispose()

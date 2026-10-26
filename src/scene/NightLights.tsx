@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { CylinderGeometry } from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { soffitAt } from './interior/ceilings'
-import { CEILING, CORRIDOR, FALSE_CEILING, UNITS, toX, toZ, type RoomRect, type UnitId } from './plan'
+import { GLOWS } from './interior/electrics'
+import { CEILING, CORRIDOR, DMR, FALSE_CEILING, UNITS, toX, toZ, type RoomRect, type UnitId } from './plan'
 import type { Materials } from './materials'
 
 interface Lamp {
@@ -22,9 +23,19 @@ const lamp = ({ rect: [x0, y0, x1, y1], toilet }: RoomRect): Lamp => ({
   intensity: 1.1 + (toX(x1) - toX(x0)) * (toZ(y1) - toZ(y0)) * 0.28,
 })
 
+/** On /dmr these rooms are lit from the electrical drawing instead (see interior/electrics.ts). */
+const DRAWN = new Set(['Living', 'Dining', 'Kitchen', 'Foyer'])
+const drawn = (id: UnitId) => DMR && id === '04'
+
 /** One downlight per room, balconies excepted. */
 const BY_FLAT = Object.fromEntries(
-  UNITS.map((u) => [u.id, u.rooms.filter((r) => !r.name.includes('Balcony')).map(lamp)]),
+  UNITS.map((u) => [
+    u.id,
+    [
+      ...u.rooms.filter((r) => !r.name.includes('Balcony') && !(drawn(u.id) && DRAWN.has(r.name))).map(lamp),
+      ...(drawn(u.id) ? GLOWS.map((g) => ({ ...g, fixture: false })) : []),
+    ],
+  ]),
 ) as Record<UnitId, Lamp[]>
 
 const [cx0, cz0, cx1, cz1] = [toX(CORRIDOR.rect[0]), toZ(CORRIDOR.rect[1]), toX(CORRIDOR.rect[2]), toZ(CORRIDOR.rect[3])]

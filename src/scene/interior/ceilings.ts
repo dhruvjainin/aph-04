@@ -110,6 +110,18 @@ function ring(outer: number[], r0: number, inner: number[], r1: number, y: numbe
     .translate(0, CEILING, 0)
 }
 
+/** Indirect cove light: a thin lit band on the riser between the first two steps of a coffer. */
+function cove(c: Coffer): BufferGeometry {
+  const [s0, s1] = c.steps
+  const [x0, z0, x1, z1] = hole(c, s0)
+  const e = 0.006
+  const shape = outline(new Shape(), [x0, z0, x1, z1], s0.r) as Shape
+  shape.holes.push(outline(new Path(), [x0 + e, z0 + e, x1 - e, z1 - e], s0.r - e))
+  return new ExtrudeGeometry(shape, { depth: 0.07, bevelEnabled: false, curveSegments: 12 })
+    .rotateX(Math.PI / 2)
+    .translate(0, s1.y - 0.005, 0)
+}
+
 function painted(parts: Parts, { rect: [px0, py0, px1, py1], key, band, walls }: Painted) {
   const [x0, z0, x1, z1] = [toX(unit.X(px0)), toZ(unit.Y(py0)), toX(unit.X(px1)), toZ(unit.Y(py1))]
   const [lx, hx, lz, hz] = [Math.min(x0, x1), Math.max(x0, x1), Math.min(z0, z1), Math.max(z0, z1)]
@@ -141,6 +153,7 @@ export function buildCeilings(): Built {
       add(parts, c.key, ring(outer, r, h, s.r, s.y))
       ;[outer, r] = [h, s.r]
     }
+    add(parts, 'glow', cove(c))
     const [x0, z0, x1, z1] = outer
     if (c.grid) {
       const [cols, rows] = c.grid

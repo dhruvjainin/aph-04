@@ -1,12 +1,13 @@
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
-import { CanvasTexture, Color, DoubleSide, MeshStandardMaterial, RepeatWrapping, SRGBColorSpace, Vector2, type Group, type Mesh } from 'three'
-import { doorRegistry, markShadowsDirty } from '../store'
+import { CanvasTexture, Color, DoubleSide, MeshStandardMaterial, RepeatWrapping, SRGBColorSpace, type Group, type Mesh } from 'three'
+import { doorRegistry, markShadowsDirty, useUi } from '../store'
 import type { Box } from './geometry'
 import { buildCeilings } from './interior/ceilings'
 import { buildDining } from './interior/dining'
 import { buildDress } from './interior/dress'
+import { buildElectrics } from './interior/electrics'
 import { buildFoyer } from './interior/foyer'
 import { buildKitchen } from './interior/kitchen'
 import { merge, type Key, type Moving } from './interior/kit'
@@ -187,7 +188,34 @@ function artTexture() {
   return t
 }
 
-const NO_SHADOW = new Set<Key>(['screen', 'arch', 'disc', 'glass', 'flame', 'frost', 'groove', 'art', 'sheer', 'tassel'])
+/** Warm walnut with long straight grain: fine streaks plus a few darker, wavy cathedral lines. */
+function oakTexture() {
+  const N = 512
+  const c = document.createElement('canvas')
+  c.width = c.height = N
+  const ctx = c.getContext('2d')!
+  ctx.fillStyle = '#6e4a38'
+  ctx.fillRect(0, 0, N, N)
+  let seed = 11
+  const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
+  for (let i = 0; i < 260; i++) {
+    const x = rand() * N
+    const dark = rand() < 0.55
+    ctx.strokeStyle = dark ? `rgba(60, 36, 24, ${0.05 + rand() * 0.14})` : `rgba(150, 108, 82, ${0.05 + rand() * 0.14})`
+    ctx.lineWidth = 0.6 + rand() * 2.2
+    const drift = (rand() - 0.5) * 10
+    ctx.beginPath()
+    for (let y = 0; y <= N; y += 16) ctx.lineTo(x + Math.sin(y / 90 + i) * drift, y)
+    ctx.stroke()
+  }
+  const t = new CanvasTexture(c)
+  t.wrapS = t.wrapT = RepeatWrapping
+  t.colorSpace = SRGBColorSpace
+  t.anisotropy = 8
+  return t
+}
+
+const NO_SHADOW = new Set<Key>(['screen', 'arch', 'disc', 'glass', 'flame', 'frost', 'groove', 'art', 'sheer', 'tassel', 'glow'])
 
 const half = (b: Box) => [(b.max[0] - b.min[0]) / 2, (b.max[1] - b.min[1]) / 2, (b.max[2] - b.min[2]) / 2] as [number, number, number]
 const mid = (b: Box) => [(b.max[0] + b.min[0]) / 2, (b.max[1] + b.min[1]) / 2, (b.max[2] + b.min[2]) / 2] as [number, number, number]
@@ -230,7 +258,7 @@ function Movable({ mv, mat }: { mv: Moving; mat: Record<Key, MeshStandardMateria
 /** Furniture and fit-out, mounted on /dmr only: one merged mesh per material, plus drawers and shutters that open. */
 export function Interior({ m }: { m: Materials }) {
   const built = useMemo(() => {
-    const pieces = [buildTvUnit(), buildDining(), buildFoyer(), buildKitchen(), buildLiving(), buildDress(), buildCeilings()]
+    const pieces = [buildTvUnit(), buildDining(), buildFoyer(), buildKitchen(), buildLiving(), buildDress(), buildCeilings(), buildElectrics()]
     const lists: Partial<Record<Key, Parameters<typeof merge>[0]>> = {}
     for (const { parts } of pieces)
       for (const [k, g] of Object.entries(parts) as [Key, Parameters<typeof merge>[0]][]) (lists[k] ??= []).push(...g)
@@ -250,17 +278,10 @@ export function Interior({ m }: { m: Materials }) {
     // Grout lines land on the counter top at 0.9 m.
     tileMap.offset.set(0, 0.5)
     return {
-      cream: new MeshStandardMaterial({ color: new Color('#ece4d6'), roughness: 0.55 }),
+      cream: new MeshStandardMaterial({ color: new Color('#e6d8c0'), roughness: 0.55 }),
       backing: new MeshStandardMaterial({ color: new Color('#b7ab98'), roughness: 0.8 }),
       flutes: new MeshStandardMaterial({ color: new Color('#ddd1bd'), roughness: 0.6 }),
-      teak: new MeshStandardMaterial({
-        map: m.wengeLeaf.map,
-        normalMap: m.wengeLeaf.normalMap,
-        roughnessMap: m.wengeLeaf.roughnessMap,
-        normalScale: new Vector2(0.3, 0.3),
-        roughness: 0.5,
-        color: new Color('#a06a44'),
-      }),
+      teak: new MeshStandardMaterial({ map: oakTexture(), roughness: 0.5 }),
       reveal: new MeshStandardMaterial({ color: new Color('#2a1a14'), roughness: 0.9 }),
       bronze: new MeshStandardMaterial({ color: new Color('#5a4a3a'), metalness: 0.4, roughness: 0.08, transparent: true, opacity: 0.75 }),
       brass: new MeshStandardMaterial({ color: new Color('#c9a45c'), metalness: 1, roughness: 0.28 }),
@@ -319,15 +340,21 @@ export function Interior({ m }: { m: Materials }) {
       }),
       tassel: new MeshStandardMaterial({ color: new Color('#c9b48c'), roughness: 0.8 }),
       art: new MeshStandardMaterial({ map: artTexture(), roughness: 0.6 }),
+      glow: new MeshStandardMaterial({ color: new Color('#ffffff'), emissive: new Color('#fff6ea'), emissiveIntensity: 0, roughness: 0.4 }),
     }
   }, [m])
+
+  const { night } = useUi()
+  useEffect(() => {
+    mat.glow.emissiveIntensity = night ? 2.5 : 0
+  }, [mat, night])
 
   useEffect(
     () => () => {
       built.meshes.forEach(([, g]) => g.dispose())
       built.moving.forEach((mv) => [mv, ...(mv.extra ?? [])].forEach((p) => p.geometry.dispose()))
-      for (const [k, x] of Object.entries(mat)) {
-        if (k !== 'teak') x.map?.dispose()
+      for (const x of Object.values(mat)) {
+        x.map?.dispose()
         x.dispose()
       }
     },

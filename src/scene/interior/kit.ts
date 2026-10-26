@@ -37,6 +37,7 @@ export type Key =
   | 'tassel'
   | 'art'
   | 'mirror'
+  | 'glow'
 
 export type Parts = Partial<Record<Key, BufferGeometry[]>>
 
