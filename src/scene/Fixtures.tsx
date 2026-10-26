@@ -26,6 +26,8 @@ const UTIL_E = face(816, 645, [0, 1], [-1, 0])
 const UTIL_S = face(694, 742, [-1, 0], [0, -1])
 const UTIL_W = face(638, 742, [0, -1], [1, 0])
 const FOYER_S_LEN = toX(unit.X(816)) - toX(unit.X(626))
+const UTIL_N_LEN = toX(unit.X(816)) - toX(unit.X(638))
+const UTIL_N_WALL = toZ(unit.Y(645)) - toZ(unit.Y(634))
 
 const point = ({ o, u, n }: Face, s: number, d: number): V2 => [o[0] + u[0] * s + n[0] * d, o[1] + u[1] * s + n[1] * d]
 
@@ -152,10 +154,15 @@ function utility(p: Parts) {
   p.blue.push(onFace(UTIL_E, 1.06, 1.24, 2.0, 2.16, 0, 0.11))
   p.yellow.push(rod(UTIL_E, 1.06, 1.24, 2.04, 0.112, 0.008))
   p.dark.push(onFace(UTIL_E, 1.11, 1.17, 2.18, 2.27, 0.03, 0.09))
-  p.yellow.push(rod(UTIL_E, 0.7, 1.08, 2.33, 0.06, 0.012), riser(UTIL_E, 1.08, 2.16, 2.33, 0.06, 0.012))
+  p.yellow.push(rod(UTIL_E, 0.06, 1.08, 2.33, 0.06, 0.012), riser(UTIL_E, 1.08, 2.16, 2.33, 0.06, 0.012))
+  // The supply drops in the NE corner and goes through the N wall to the kitchen.
+  const gas = UTIL_N_LEN - 0.06
+  p.yellow.push(riser(UTIL_N, gas, 2.0, 2.33, 0.06, 0.012), disc(UTIL_N, gas, 2.0, -UTIL_N_WALL - 0.03, 0.012, UTIL_N_WALL + 0.09))
+  p.dark.push(onFace(UTIL_N, gas - 0.016, gas + 0.016, 2.18, 2.21, 0.044, 0.076))
+  p.holes.push(disc(UTIL_N, gas, 2.0, 0, 0.035, 0.002), disc(UTIL_N, gas, 2.0, -UTIL_N_WALL - 0.002, 0.035, 0.002))
   p.yellow.push(riser(UTIL_E, 1.14, 2.16, 2.18, 0.06, 0.012), rod(UTIL_E, 1.17, 1.56, 2.24, 0.06, 0.012))
 
-  board(p, UTIL_N, 2.4, 1.3, 0.086, 0.086, ['switch', 'switch'])
+  board(p, UTIL_N, UTIL_N_LEN - 0.13, 1.3, 0.1, 0.086, ['switch', 'switch', 'switch'])
   p.knobs.push(rod(UTIL_N, 1.45, 2.05, 0.45, 0.03, 0.012))
   p.knobs.push(disc(UTIL_N, 1.78, 0.43, 0.03, 0.01, 0.17), disc(UTIL_N, 2.02, 0.43, 0.03, 0.01, 0.17), rod(UTIL_N, 1.78, 2.02, 0.43, 0.2, 0.01))
   p.knobs.push(disc(UTIL_N, 1.8, 0.14, 0, 0.035, 0.012))
