@@ -1,7 +1,7 @@
 import { PerformanceMonitor, Stats, useProgress } from '@react-three/drei'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { NoToneMapping, PCFShadowMap } from 'three'
 import { Apartment } from './scene/Apartment'
 import { Dimensions } from './scene/Dimensions'
@@ -74,12 +74,38 @@ export default function App() {
         <Suspense fallback={null}>
           <Lighting night={night} flat={flat} />
           <World />
+          <Screenshot />
           <Effects high={high} night={night} mobile={TOUCH} />
         </Suspense>
       </Canvas>
       <Hud />
     </>
   )
+}
+
+/** `P` saves the current view as a PNG, grabbed right after the frame is drawn. */
+function Screenshot() {
+  const want = useRef(false)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'KeyP') want.current = true
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+  useFrame(({ gl }) => {
+    if (!want.current) return
+    want.current = false
+    gl.domElement.toBlob((b) => {
+      if (!b) return
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(b)
+      a.download = `f2904-${Date.now()}.png`
+      a.click()
+      URL.revokeObjectURL(a.href)
+    })
+  }, 2)
+  return null
 }
 
 /** Laid out as on the floor: 01 and 02 at the top, 04 and 03 below. */

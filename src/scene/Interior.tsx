@@ -332,7 +332,7 @@ export function Interior({ m }: { m: Materials }) {
         side: DoubleSide,
       }),
       paint: new MeshStandardMaterial({ color: new Color('#f5f4f1'), roughness: 0.96 }),
-      terracotta: new MeshStandardMaterial({ color: new Color('#a87b58'), roughness: 0.92 }),
+      terracotta: new MeshStandardMaterial({ color: new Color('#ceb5a1'), roughness: 0.92 }),
       mirror: new MeshStandardMaterial({ color: new Color('#a9b0b2'), metalness: 0.9, roughness: 0.12, envMapIntensity: 0.55 }),
       groove: new MeshStandardMaterial({ color: new Color('#8f8a82'), roughness: 0.9 }),
       grey: new MeshStandardMaterial({ color: new Color('#8d8e8c'), roughness: 0.95 }),

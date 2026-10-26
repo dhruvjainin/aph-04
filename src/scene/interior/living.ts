@@ -9,6 +9,7 @@ import {
   Quaternion,
   Shape,
   ShapeGeometry,
+  SplineCurve,
   SphereGeometry,
   TorusGeometry,
   Vector2,
@@ -126,47 +127,52 @@ function lantern(parts: Parts) {
 }
 
 function leafShape(len: number, w: number) {
-  const s = new Shape()
-  s.moveTo(0, 0)
-  s.quadraticCurveTo(w, len * 0.45, 0, len)
-  s.quadraticCurveTo(-w, len * 0.45, 0, 0)
+  // Violin outline: narrow at the stalk, widest at three quarters, rounded tip.
+  const half = new SplineCurve(
+    [[0, 0], [0.08, 0.12], [0.28, 0.2], [0.45, 0.3], [0.62, 0.65], [0.76, 1], [0.9, 0.82], [0.97, 0.42], [1, 0]].map(([t, k]) => new Vector2(k * (w / 2), t * len)),
+  ).getPoints(30)
+  const s = new Shape([...half, ...half.slice(1, -1).reverse().map((p) => new Vector2(-p.x, p.y))])
   return new ShapeGeometry(s, 3)
 }
 
 function plant(parts: Parts): Box[] {
   const { x, z } = PLANT
-  const pot = 0.38
-  add(parts, 'ceramic', new CylinderGeometry(0.2, 0.16, pot, 6).translate(0, pot / 2, 0).applyMatrix4(at(x, 0, z)))
-  add(parts, 'reveal', new CylinderGeometry(0.18, 0.18, 0.01, 6).applyMatrix4(at(x, pot - 0.03, z)))
+  const pot = 0.36
+  add(parts, 'ceramic', new CylinderGeometry(0.21, 0.17, pot, 24).translate(0, pot / 2, 0).applyMatrix4(at(x, 0, z)))
+  add(parts, 'reveal', new CylinderGeometry(0.19, 0.19, 0.01, 24).applyMatrix4(at(x, pot - 0.03, z)))
 
+  // Fiddle-leaf fig: one slim trunk with a leaning top, big violin leaves on short stalks, mostly in the upper half.
   const rand = rng(41)
   const stems: BufferGeometry[] = []
   const leaves: BufferGeometry[] = []
-  const leaf = leafShape(0.2, 0.022)
+  const leaf = leafShape(0.27, 0.17)
+  const base = new Vector3(0, pot - 0.03, 0)
+  const tip = new Vector3(0.05, 1.8, -0.02)
+  stems.push(rod(base, tip, 0.017, 0.008, 8))
   const q = new Quaternion()
   const m = new Matrix4()
-  for (let s = 0; s < 4; s++) {
-    const lean = new Vector3((rand() - 0.5) * 0.35, 1, (rand() - 0.5) * 0.35).normalize()
-    const base = new Vector3((rand() - 0.5) * 0.1, pot - 0.03, (rand() - 0.5) * 0.1)
-    const tip = base.clone().addScaledVector(lean, 0.85 + rand() * 0.55)
-    stems.push(rod(base, tip, 0.012, 0.006, 6))
-    for (let i = 0; i < 46; i++) {
-      const t = 0.3 + rand() * 0.7
-      const p = base.clone().lerp(tip, t)
-      // Leaves arch out and down from the stem, denser and longer near the top.
-      const yaw = rand() * Math.PI * 2
-      const droop = 0.5 + rand() * 1.1
-      q.setFromAxisAngle(new Vector3(Math.cos(yaw), 0, -Math.sin(yaw)), droop)
-      q.premultiply(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), rand() * Math.PI))
-      const k = 0.6 + t * 0.6
-      m.compose(p, q, new Vector3(k, k, k))
-      leaves.push(leaf.clone().applyMatrix4(m))
-    }
+  const turn = new Quaternion()
+  const up = new Vector3(0, 1, 0)
+  for (let i = 0; i < 26; i++) {
+    const t = 0.32 + (i / 25) * 0.68
+    const p = base.clone().lerp(tip, t)
+    const yaw = i * 2.4 + rand() * 0.5
+    const tilt = 0.9 + rand() * 0.6
+    const stalk = 0.05 + rand() * 0.03
+    const outward = new Vector3(Math.sin(yaw), 0, Math.cos(yaw))
+    const root = p.clone().addScaledVector(outward, stalk)
+    stems.push(rod(p, root, 0.005, 0.004, 5))
+    q.setFromAxisAngle(new Vector3(1, 0, 0), tilt)
+    turn.setFromAxisAngle(up, yaw)
+    q.premultiply(turn)
+    const k = 0.75 + (1 - Math.abs(t - 0.65)) * 0.45
+    m.compose(root, q, new Vector3(k, k, k))
+    leaves.push(leaf.clone().applyMatrix4(m))
   }
   leaf.dispose()
   add(parts, 'twig', ...stems.map((g) => g.applyMatrix4(at(x, 0, z))))
   add(parts, 'leaf', ...leaves.map((g) => g.applyMatrix4(at(x, 0, z))))
-  return [local(lbox(x - 0.2, x + 0.2, 0, 1.2, z - 0.2, z + 0.2))]
+  return [local(lbox(x - 0.22, x + 0.22, 0, 1.2, z - 0.22, z + 0.22))]
 }
 
 /** West wall length, north to south face. */
@@ -213,10 +219,21 @@ function pelmet(parts: Parts, top: number) {
   add(parts, 'cob', slab(d - t - 0.025, d - t, top - 0.045, top - 0.02, 0.05, LEN - 0.05))
 }
 
+/** A split AC indoor unit hung on the pelmet's front face, centred on the wall. */
+function airCon(parts: Parts) {
+  const [x0, x1, y0, y1] = [PELMET.d, PELMET.d + 0.21, PELMET.y0 + 0.14, PELMET.y0 + 0.46]
+  const [z0, z1] = [LEN / 2 - 0.5, LEN / 2 + 0.5]
+  const m = at(0, 0, 0)
+  add(parts, 'paint', soft(x0, x1, y0, y1, z0, z1, 0.06).applyMatrix4(m))
+  add(parts, 'groove', slab(x1 - 0.06, x1 + 0.004, y0 + 0.012, y0 + 0.03, z0 + 0.06, z1 - 0.06))
+  add(parts, 'bezel', slab(x1 - 0.002, x1 + 0.003, y1 - 0.07, y1 - 0.05, z1 - 0.13, z1 - 0.07))
+}
+
 /** Two blackout curtains meeting mid-wall; `E` bunches them to the ends. */
 function curtains(parts: Parts): Moving[] {
   const top = soffitAt(X0 + 0.05, Z0 + LEN / 2)
   pelmet(parts, top)
+  airCon(parts)
   const head = top - RAIL.drop
   const mid = LEN / 2
   const panel = (z0: number, z1: number, d: number, seed: number, pivotZ: number): Moving => ({

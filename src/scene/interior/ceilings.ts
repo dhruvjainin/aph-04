@@ -25,17 +25,17 @@ interface Coffer {
   grid?: [number, number]
 }
 
-const LIVING: Coffer = {
-  rect: [192, 289, 447, 527],
-  key: 'paint',
-  steps: [
-    { inset: [0.55, 0.5, 0.45, 0.5], r: 0.45, y: 2.55 },
-    { inset: [0.67, 0.62, 0.57, 0.62], r: 0.33, y: 2.65 },
-  ],
-  grid: [4, 3],
-}
+const COFFERS: Coffer[] = []
 
-const COFFERS = [LIVING]
+/** A flat drop ceiling: a solid slab-deep box whose underside is the soffit. One level over Living, Dining and Passage. */
+const DROP = 2.65
+const FLATS: { rect: Rect; key: Key; y: number }[] = [
+  [192, 289, 447, 527],
+  [447, 289, 626, 634],
+  [376, 527, 459, 772],
+].map((rect) => ({ rect: rect as Rect, key: 'paint', y: DROP }))
+
+const flatBounds = ({ rect: [x0, y0, x1, y1] }: { rect: Rect }) => [toX(unit.X(x0)), toZ(unit.Y(y0)), toX(unit.X(x1)), toZ(unit.Y(y1))]
 
 /** A painted ceiling carried down the walls as a band; walls are [x0, y0, x1, y1] lines on the room-side faces in plan px. */
 interface Painted {
@@ -88,6 +88,10 @@ function inside(x: number, z: number, [x0, z0, x1, z1]: number[], r: number) {
 /** Height of the ceiling at (x, z): a false-ceiling soffit on /dmr, otherwise the slab. */
 export function soffitAt(x: number, z: number) {
   if (!DMR) return CEILING
+  for (const f of FLATS) {
+    const [x0, z0, x1, z1] = flatBounds(f)
+    if (x >= x0 && x <= x1 && z >= z0 && z <= z1) return f.y
+  }
   for (const c of COFFERS) {
     let outer = bounds(c)
     let r = 0
@@ -145,6 +149,10 @@ function painted(parts: Parts, { rect: [px0, py0, px1, py1], key, band, walls }:
 export function buildCeilings(): Built {
   const parts: Parts = {}
   painted(parts, MASTER)
+  for (const f of FLATS) {
+    const [x0, z0, x1, z1] = flatBounds(f)
+    add(parts, f.key, boxesToGeometry([{ min: [Math.min(x0, x1), f.y, Math.min(z0, z1)], max: [Math.max(x0, x1), CEILING - 0.0005, Math.max(z0, z1)] }]))
+  }
   for (const c of COFFERS) {
     let outer = bounds(c)
     let r = 0

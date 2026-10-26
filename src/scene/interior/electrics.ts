@@ -35,14 +35,13 @@ const FANS = [
   { ...spot(KITCHEN, 0.38, 0.5), r: 0.46 },
 ]
 
-const mid = (...p: { x: number; z: number }[]) => ({ x: p.reduce((t, q) => t + q.x, 0) / p.length, z: p.reduce((t, q) => t + q.z, 0) / p.length })
 const lit = (p: { x: number; z: number }, intensity: number) => ({ ...p, ceiling: soffitAt(p.x, p.z), intensity })
 
-/** Point lights standing in for the downlights, one per neighbouring pair, and for the foyer lanterns. */
+/** One point light under each downlight, so the pools of light sit right below the fixtures, and for the foyer lanterns. */
 export const GLOWS = [
-  ...[[0, 1], [2, 4], [3, 5], [6, 7]].map(([a, b]) => lit(mid(LIVING_CL[a], LIVING_CL[b]), 1.5)),
-  ...[[0, 1], [2, 3], [4, 5]].map(([a, b]) => lit(mid(DINING_CL[a], DINING_CL[b]), 1.7)),
-  ...[[0, 1], [2, 3]].map(([a, b]) => lit(mid(KITCHEN_CL[a], KITCHEN_CL[b]), 1.7)),
+  ...LIVING_CL.map((p) => lit(p, 0.8)),
+  ...DINING_CL.map((p) => lit(p, 0.9)),
+  ...KITCHEN_CL.map((p) => lit(p, 0.9)),
   // The light sits 0.22 m under `ceiling`, so this hangs it at the lantern's lamp.
   ...LANTERN_AT.map((p) => ({ ...p, ceiling: 2.17, intensity: 1.2 })),
 ]
