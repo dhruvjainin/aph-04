@@ -12,13 +12,17 @@ import { Lighting } from './scene/Lighting'
 import { useMaterials } from './scene/materials'
 import { Player } from './scene/Player'
 import { Minimap } from './Minimap'
-import { DMR, unitById, type UnitId } from './scene/plan'
+import { Runjhun } from './scene/Runjhun'
+import { DMR, UNITS, unitById, type UnitId } from './scene/plan'
 import { TouchControls } from './TouchControls'
-import { player, TOUCH, ui, useUi } from './store'
+import { closeMenu, player, TOUCH, ui, useUi, WALL_PAINTS } from './store'
 
 function World() {
   const m = useMaterials()
-  const { night, dims, flat } = useUi()
+  const { night, dims, flat, paint } = useUi()
+  useEffect(() => {
+    m.wall.color.set(paint)
+  }, [m, paint])
   // Lit-interior reflections turn clear glass milky at night.
   useEffect(() => {
     m.glass.envMapIntensity = night ? 0.25 : 1.6
@@ -30,6 +34,9 @@ function World() {
       {DMR && <Interior m={m} />}
       {night && <NightLights m={m} flat={flat} />}
       {dims && <Dimensions flat={flat} />}
+      {UNITS.map((u) => (
+        <Runjhun key={u.id} unit={u} />
+      ))}
       <Player />
     </Physics>
   )
@@ -74,7 +81,7 @@ export default function App() {
 const GRID: UnitId[] = DMR ? ['04'] : ['01', '02', '04', '03']
 
 function Hud() {
-  const { locked, prompt, night, dims, flat, started } = useUi()
+  const { locked, prompt, night, dims, flat, started, menu, paint } = useUi()
   const { progress, active } = useProgress()
   const [map, setMap] = useState(true)
   const loading = active || progress < 100
@@ -92,7 +99,7 @@ function Hud() {
   // Every button carries `.enter`: the pointer-lock control binds to them once, on mount.
   return (
     <>
-      <div className={`overlay ${locked ? 'hidden' : ''}`}>
+      <div className={`overlay ${locked || menu ? 'hidden' : ''}`}>
         <div className="card">
           <p className="eyebrow">{DMR ? 'Flat 04 · Type 3D · 3 BHK' : '4 flats · 3 BHK'}</p>
           <h1>Walkthrough</h1>
@@ -145,6 +152,7 @@ function Hud() {
             <li><kbd>M</kbd> toggle plan</li>
             <li><kbd>N</kbd> day / night</li>
             <li><kbd>T</kbd> wall dimensions</li>
+            <li><kbd>E</kbd> / click Runjhun, the interior designer, to talk</li>
             <li><kbd>Esc</kbd> pause</li>
           </ul>
           )}
@@ -158,6 +166,30 @@ function Hud() {
         <button className={dims ? 'on' : ''} onClick={() => ui.set({ dims: !dims })}>
           Dimensions {!TOUCH && <kbd>T</kbd>}
         </button>
+      </div>
+
+      <div className={`designer ${menu ? '' : 'hidden'}`}>
+        <p className="eyebrow">Interior design by Runjhun</p>
+        <h2>Make this flat feel like home.</h2>
+        <p className="say">Runjhun designs homes that fit the way you live. Try a wall colour below, then call her to plan the rest.</p>
+        <div className="swatches">
+          {WALL_PAINTS.map((c) => (
+            <button
+              key={c.hex}
+              title={c.name}
+              aria-label={c.name}
+              className={c.hex === paint ? 'on' : ''}
+              style={{ background: c.hex }}
+              onClick={() => ui.set({ paint: c.hex })}
+            />
+          ))}
+        </div>
+        <div className="row">
+          <button onClick={() => ui.set({ night: !night })}>{night ? 'Switch to day' : 'Switch to night'}</button>
+          <button onClick={() => ui.set({ dims: !dims })}>{dims ? 'Hide dimensions' : 'Show dimensions'}</button>
+        </div>
+        <a className="call" href="tel:+917568098455">Call Runjhun · +91 75680 98455</a>
+        <button className="back" onClick={closeMenu}>Back to the walk</button>
       </div>
 
       {locked && <div className="crosshair" />}

@@ -47,6 +47,7 @@ export function Player() {
     if (import.meta.env.DEV) {
       Object.assign(window, {
         __debug: { camera, scene, free: false },
+        __ui: ui,
         __teleport: (x: number, z: number, yaw: number, pitch = 0) => {
           body.current?.setTranslation({ x, y: RADIUS + HALF + 0.05, z }, true)
           camera.rotation.set(pitch, yaw, 0, 'YXZ')
@@ -126,6 +127,8 @@ export function Player() {
     b.setLinvel({ x: vel.x, y: lv.y, z: vel.z }, true)
 
     const p = b.translation()
+    player.pos.x = p.x
+    player.pos.z = p.z
     const speed = Math.hypot(vel.x, vel.z)
     bob.current += dt * speed * 5.2
     const amp = Math.min(speed / WALK, 1.6) * 0.012
@@ -135,7 +138,7 @@ export function Player() {
     if (state.clock.elapsedTime - lastProbe.current > 0.1) {
       lastProbe.current = state.clock.elapsedTime
       const door = ui.get().locked ? probe() : undefined
-      ui.set({ prompt: door ? `${door.isOpen() ? 'Close' : 'Open'} ${door.noun ?? 'door'}` : null })
+      ui.set({ prompt: door ? `${door.verb ?? (door.isOpen() ? 'Close' : 'Open')} ${door.noun ?? 'door'}` : null })
       const room = roomAt(p.x, p.z)
       ui.set({ flat: room?.unit?.id ?? nearestFlat(p.x, p.z) })
       const label = !room ? '' : room.unit ? `${room.unit.flat} · ${room.name}` : room.name

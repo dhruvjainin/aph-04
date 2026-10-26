@@ -7,6 +7,8 @@ export interface DoorHandle {
   isOpen: () => boolean
   /** What the prompt calls it; defaults to "door". */
   noun?: string
+  /** Prompt verb; defaults to "Open" / "Close" from `isOpen`. */
+  verb?: string
 }
 
 export const doorRegistry = new Map<Object3D, DoorHandle>()
@@ -27,9 +29,22 @@ interface UiState {
   flat: UnitId
   /** False until the first flat is picked on the home screen. */
   started: boolean
+  /** Runjhun's design popup is open. */
+  menu: boolean
+  /** Wall paint chosen in the menu. */
+  paint: string
 }
 
-let state: UiState = { locked: false, prompt: null, loaded: false, night: false, dims: false, flat: '04', started: false }
+export const WALL_PAINTS = [
+  { name: 'Warm white', hex: '#efede8' },
+  { name: 'Sand', hex: '#e6d6bb' },
+  { name: 'Sage', hex: '#d5e0cf' },
+  { name: 'Mist blue', hex: '#d6e1ea' },
+  { name: 'Blush', hex: '#ecd0c8' },
+  { name: 'Butter', hex: '#f0e0a0' },
+]
+
+let state: UiState = { locked: false, prompt: null, loaded: false, night: false, dims: false, flat: '04', started: false, menu: false, paint: WALL_PAINTS[0].hex }
 const listeners = new Set<() => void>()
 
 export const ui = {
@@ -68,4 +83,15 @@ export const touch = {
 }
 
 /** Registered by the player: jump to a flat's front door. */
-export const player = { teleport: (_id: UnitId) => {} }
+export const player = { teleport: (_id: UnitId) => {}, pos: { x: 0, z: 0 } }
+
+/** Frees the mouse so the menu can be clicked. */
+export const openMenu = () => {
+  document.exitPointerLock?.()
+  ui.set({ menu: true, locked: false })
+}
+
+export const closeMenu = () => {
+  ui.set({ menu: false, locked: TOUCH })
+  if (!TOUCH) document.querySelector('canvas')?.requestPointerLock()
+}
