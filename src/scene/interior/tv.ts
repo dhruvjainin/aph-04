@@ -1,10 +1,10 @@
-import { BufferGeometry, CylinderGeometry, ExtrudeGeometry, LatheGeometry, PlaneGeometry, Shape, Vector2 } from 'three'
+import { BufferGeometry, CylinderGeometry, LatheGeometry, PlaneGeometry, Vector2 } from 'three'
 import { boxesToGeometry, type Box } from '../geometry'
 import { toX, toZ, unitById } from '../plan'
 import { add, type Built, type Parts } from './kit'
 
 // TV wall and low cabinet on the Living's south wall (shared with the Kids Room), flat 04 on /dmr: a plain wall with
-// a thin teak arch (rounded top corners, open at the bottom), a wall-hung TV, and a long floating wood cabinet.
+// a thin teak frame (open at the bottom) holding a grid of grey grooves, a wall-hung TV, and a long floating wood cabinet.
 // Local frame, seen from the Living: s runs left → right along the wall (east → west),
 // d comes off the wall face into the room, y is height.
 
@@ -46,55 +46,44 @@ function rounded(s0: number, s1: number, y0: number, y1: number, d0: number, d1:
 
 /** Floating cabinet, rounded at both front corners. */
 const C = { s0: 0.02, s1: L - 0.02, y0: 0.08, y1: 0.38, d1: 0.4, r: 0.2 }
-/** Thin teak arch on the wall, standing on the cabinet. */
-const ARCH = { inset: 0.3, top: 1.9, w: 0.03, d: 0.012, r: 0.33 }
+/** Thin teak frame on the wall, standing on the cabinet. Width and height in metres, centred on the wall. */
+const FRAME = { w: 2, top: 2.14, t: 0.02, d: 0.015 }
 const TV = { s: L / 2, y: 1.05, w: 1.08, h: 0.63, t: 0.03 }
 const LAMP = { s: 0.17, d: 0.22 }
 
-/** Deterministic PRNG so the grooves are the same every load. */
-function rng(seed: number) {
-  return () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
-}
+/** Grooves traced from the reference render: [x, y0, y1] verticals and [y, x0, x1] horizontals, in its pixels (278 px/m). */
+const PX = 278
+const FX = 777
+const FY = 685
+const VERT = [
+  [825, 205, 520], [910, 205, 640], [950, 205, 275], [950, 315, 610], [1035, 205, 345], [1035, 345, 640],
+  [1075, 205, 300], [1075, 300, 640], [1160, 205, 640], [1200, 205, 350], [1200, 350, 640], [1285, 350, 520],
+]
+const HORIZ = [
+  [350, 825, 950], [275, 950, 1075], [315, 910, 950], [300, 1075, 1160], [520, 785, 825], [520, 1285, 1330],
+  [350, 1200, 1285], [640, 910, 1200], [610, 950, 1160],
+]
 
-/** A jittered grid of thin grooves over the whole wall, each segment kept at random so the grid looks irregular. */
 function grooves(): Box[] {
-  const rnd = rng(23)
-  const steps = (from: number, to: number, lo: number, hi: number) => {
-    const v = [from]
-    while (v[v.length - 1] + lo < to) v.push(Math.min(to, v[v.length - 1] + lo + rnd() * (hi - lo)))
-    return v
-  }
-  const [g, d0, d1, top] = [0.0025, 0.001, 0.003, 2.55]
-  const xs = steps(0.2, L - 0.2, 0.3, 0.7)
-  const ys = steps(C.y1, top, 0.3, 0.6)
-  const out: Box[] = []
-  for (const s of xs.slice(1, -1)) {
-    for (let i = 0; i < ys.length - 1; i++) if (rnd() < 0.7) out.push(box(s - g, s + g, ys[i], ys[i + 1], d0, d1))
-  }
-  for (const y of ys.slice(1, -1)) {
-    for (let i = 0; i < xs.length - 1; i++) if (rnd() < 0.7) out.push(box(xs[i], xs[i + 1], y - g, y + g, d0, d1))
-  }
-  return out
+  const [g, d0, d1] = [0.004, 0.001, 0.003]
+  const s0 = (L - FRAME.w) / 2
+  const sx = (px: number) => s0 + (px - FX) / PX
+  const sy = (py: number) => C.y1 + (FY - py) / PX
+  return [
+    ...VERT.map(([x, a, b]) => box(sx(x) - g, sx(x) + g, sy(b), sy(a), d0, d1)),
+    ...HORIZ.map(([y, a, b]) => box(sx(a), sx(b), sy(y) - g, sy(y) + g, d0, d1)),
+  ]
 }
 
-function arch() {
-  const { inset, top, w, d, r } = ARCH
-  const [a, b, y0] = [XE - inset, XE - (L - inset), C.y1]
-  const sh = new Shape()
-  sh.moveTo(a, y0)
-  sh.lineTo(a, top - r)
-  sh.quadraticCurveTo(a, top, a - r, top)
-  sh.lineTo(b + r, top)
-  sh.quadraticCurveTo(b, top, b, top - r)
-  sh.lineTo(b, y0)
-  sh.lineTo(b + w, y0)
-  sh.lineTo(b + w, top - r)
-  sh.quadraticCurveTo(b + w, top - w, b + r, top - w)
-  sh.lineTo(a - r, top - w)
-  sh.quadraticCurveTo(a - w, top - w, a - w, top - r)
-  sh.lineTo(a - w, y0)
-  sh.closePath()
-  return new ExtrudeGeometry(sh, { depth: d, bevelEnabled: false, curveSegments: 12 }).translate(0, 0, ZW - d)
+function frame(): Box[] {
+  const { w, top, t, d } = FRAME
+  const s0 = (L - w) / 2
+  const s1 = s0 + w
+  return [
+    box(s0, s0 + t, C.y1, top, 0, d),
+    box(s1 - t, s1, C.y1, top, 0, d),
+    box(s0, s1, top - t, top, 0, d),
+  ]
 }
 
 export function buildTvUnit(): Built {
@@ -125,7 +114,7 @@ export function buildTvUnit(): Built {
   add(parts, 'bezel', boxesToGeometry([tv]))
   add(parts, 'screen', screen)
   add(parts, 'groove', boxesToGeometry(grooves()))
-  add(parts, 'teak', arch(), ...rounded(C.s0, C.s1, C.y0, C.y1, 0.02, C.d1, C.r, C.r))
+  add(parts, 'teak', boxesToGeometry(frame()), ...rounded(C.s0, C.s1, C.y0, C.y1, 0.02, C.d1, C.r, C.r))
   add(parts, 'ceramic', vase)
   add(parts, 'shade', shade)
   return { parts, colliders: [box(C.s0, C.s1, 0, C.y1, 0, C.d1)] }
