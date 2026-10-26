@@ -47,7 +47,7 @@ export const TYPE_DMR: UnitPlan = {
     {
       rect: [627, 592, 638, 1010],
       openings: [
-        { from: 700, to: 742, kind: 'vent' },
+        { from: 700, to: 742, kind: 'vent', sill: 1.1, head: 2.0 },
         { from: 850, to: 885, kind: 'vent' },
       ],
     },
