@@ -7,6 +7,7 @@ import { Apartment } from './scene/Apartment'
 import { Dimensions } from './scene/Dimensions'
 import { NightLights } from './scene/NightLights'
 import { Effects } from './scene/Effects'
+import { Fixtures } from './scene/Fixtures'
 import { Interior } from './scene/Interior'
 import { Lighting } from './scene/Lighting'
 import { useMaterials } from './scene/materials'
@@ -32,6 +33,7 @@ function World() {
   return (
     <Physics timeStep="vary" gravity={[0, -9.81, 0]}>
       <Apartment m={m} />
+      <Fixtures />
       {DMR && <Interior m={m} />}
       {night && <NightLights m={m} flat={flat} />}
       {dims && <Dimensions flat={flat} />}
