@@ -20,7 +20,7 @@ import { closeMenu, player, TOUCH, ui, useUi, WALL_PAINTS } from './store'
 
 function World() {
   const m = useMaterials()
-  const { night, dims, debug, flat, paint } = useUi()
+  const { night, dims, labels, flat, paint } = useUi()
   useEffect(() => {
     m.wall.color.set(paint)
   }, [m, paint])
@@ -35,7 +35,7 @@ function World() {
       {DMR && <Interior m={m} />}
       {night && <NightLights m={m} flat={flat} />}
       {dims && <Dimensions flat={flat} />}
-      {import.meta.env.DEV && debug && <WallLabels flat={flat} />}
+      {labels && <WallLabels flat={flat} />}
       {UNITS.map((u) => (
         <Runjhun key={u.id} unit={u} />
       ))}
@@ -83,7 +83,7 @@ export default function App() {
 const GRID: UnitId[] = DMR ? ['04'] : ['01', '02', '04', '03']
 
 function Hud() {
-  const { locked, prompt, night, dims, flat, started, menu, paint } = useUi()
+  const { locked, prompt, night, dims, labels, flat, started, menu, paint } = useUi()
   const { progress, active } = useProgress()
   const [map, setMap] = useState(true)
   const loading = active || progress < 100
@@ -93,7 +93,7 @@ function Hud() {
       if (e.code === 'KeyM') setMap((v) => !v)
       if (e.code === 'KeyN') ui.set({ night: !ui.get().night })
       if (e.code === 'KeyT') ui.set({ dims: !ui.get().dims })
-      if (import.meta.env.DEV && e.code === 'KeyL') ui.set({ debug: !ui.get().debug })
+      if (e.code === 'KeyL') ui.set({ labels: !ui.get().labels })
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -155,7 +155,7 @@ function Hud() {
             <li><kbd>M</kbd> toggle plan</li>
             <li><kbd>N</kbd> day / night</li>
             <li><kbd>T</kbd> wall dimensions</li>
-            {import.meta.env.DEV && <li><kbd>L</kbd> wall labels (dev)</li>}
+            <li><kbd>L</kbd> wall labels</li>
             <li><kbd>E</kbd> / click Runjhun, the interior designer, to talk</li>
             <li><kbd>Esc</kbd> pause</li>
           </ul>
@@ -163,14 +163,20 @@ function Hud() {
         </div>
       </div>
 
-      <div className="toggles">
-        <button className={night ? 'on' : ''} onClick={() => ui.set({ night: !night })}>
-          {night ? 'Night' : 'Day'} {!TOUCH && <kbd>N</kbd>}
-        </button>
-        <button className={dims ? 'on' : ''} onClick={() => ui.set({ dims: !dims })}>
-          Dimensions {!TOUCH && <kbd>T</kbd>}
-        </button>
-      </div>
+      <details className="toggles">
+        <summary>Settings</summary>
+        <div className="menu">
+          <button className={night ? 'on' : ''} onClick={() => ui.set({ night: !night })}>
+            {night ? 'Night' : 'Day'} {!TOUCH && <kbd>N</kbd>}
+          </button>
+          <button className={dims ? 'on' : ''} onClick={() => ui.set({ dims: !dims })}>
+            Dimensions {!TOUCH && <kbd>T</kbd>}
+          </button>
+          <button className={labels ? 'on' : ''} onClick={() => ui.set({ labels: !labels })}>
+            Wall labels {!TOUCH && <kbd>L</kbd>}
+          </button>
+        </div>
+      </details>
 
       <div className={`designer ${menu ? '' : 'hidden'}`}>
         <p className="eyebrow">Interior design by Runjhun</p>

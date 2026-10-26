@@ -25,8 +25,8 @@ interface UiState {
   loaded: boolean
   night: boolean
   dims: boolean
-  /** Dev only: wall labels (`L`). */
-  debug: boolean
+  /** Wall labels (`L`). */
+  labels: boolean
   /** The flat you are in, or nearest to when in the corridor. */
   flat: UnitId
   /** False until the first flat is picked on the home screen. */
@@ -46,7 +46,7 @@ export const WALL_PAINTS = [
   { name: 'Butter', hex: '#f0e0a0' },
 ]
 
-let state: UiState = { locked: false, prompt: null, loaded: false, night: false, dims: false, debug: false, flat: '04', started: false, menu: false, paint: WALL_PAINTS[0].hex }
+let state: UiState = { locked: false, prompt: null, loaded: false, night: false, dims: false, labels: false, flat: '04', started: false, menu: false, paint: WALL_PAINTS[0].hex }
 const listeners = new Set<() => void>()
 
 export const ui = {
