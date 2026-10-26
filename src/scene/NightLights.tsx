@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { CylinderGeometry } from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { soffitAt } from './interior/ceilings'
 import { CEILING, CORRIDOR, FALSE_CEILING, UNITS, toX, toZ, type RoomRect, type UnitId } from './plan'
 import type { Materials } from './materials'
 
@@ -16,7 +17,7 @@ interface Lamp {
 const lamp = ({ rect: [x0, y0, x1, y1], toilet }: RoomRect): Lamp => ({
   x: toX((x0 + x1) / 2),
   z: toZ((y0 + y1) / 2),
-  ceiling: toilet ? FALSE_CEILING : CEILING,
+  ceiling: toilet ? FALSE_CEILING : soffitAt(toX((x0 + x1) / 2), toZ((y0 + y1) / 2)),
   fixture: !toilet,
   intensity: 1.1 + (toX(x1) - toX(x0)) * (toZ(y1) - toZ(y0)) * 0.28,
 })

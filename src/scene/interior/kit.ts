@@ -27,6 +27,15 @@ export type Key =
   | 'verde'
   | 'gtile'
   | 'frost'
+  | 'paint'
+  | 'terracotta'
+  | 'groove'
+  | 'grey'
+  | 'leaf'
+  | 'linen'
+  | 'sheer'
+  | 'tassel'
+  | 'art'
 
 export type Parts = Partial<Record<Key, BufferGeometry[]>>
 

@@ -4,10 +4,12 @@ import { useEffect, useMemo, useRef } from 'react'
 import { CanvasTexture, Color, DoubleSide, MeshStandardMaterial, RepeatWrapping, SRGBColorSpace, Vector2, type Group, type Mesh } from 'three'
 import { doorRegistry, markShadowsDirty } from '../store'
 import type { Box } from './geometry'
+import { buildCeilings } from './interior/ceilings'
 import { buildDining } from './interior/dining'
 import { buildFoyer } from './interior/foyer'
 import { buildKitchen } from './interior/kitchen'
 import { merge, type Key, type Moving } from './interior/kit'
+import { buildLiving } from './interior/living'
 import { buildTvUnit } from './interior/tv'
 import { GREEN_TILE_REPEAT, greenMarble, greenTile, whiteMarble, type Materials } from './materials'
 
@@ -109,7 +111,82 @@ function caneTexture() {
   return t
 }
 
-const NO_SHADOW = new Set<Key>(['screen', 'arch', 'disc', 'glass', 'flame', 'frost'])
+/** A night forest: deep teal sky, a pale moon, dark pines and a deer in silver light. */
+function artTexture() {
+  const W = 512
+  const H = 640
+  const c = document.createElement('canvas')
+  c.width = W
+  c.height = H
+  const ctx = c.getContext('2d')!
+  const sky = ctx.createLinearGradient(0, 0, 0, H)
+  sky.addColorStop(0, '#0d2430')
+  sky.addColorStop(0.55, '#1d4a52')
+  sky.addColorStop(1, '#0a1a1e')
+  ctx.fillStyle = sky
+  ctx.fillRect(0, 0, W, H)
+  const glow = ctx.createRadialGradient(330, 150, 10, 330, 150, 220)
+  glow.addColorStop(0, 'rgba(230, 240, 220, 0.55)')
+  glow.addColorStop(1, 'rgba(230, 240, 220, 0)')
+  ctx.fillStyle = glow
+  ctx.fillRect(0, 0, W, H)
+  ctx.fillStyle = '#f1f0e2'
+  ctx.beginPath()
+  ctx.arc(330, 150, 42, 0, Math.PI * 2)
+  ctx.fill()
+  let seed = 5
+  const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
+  const pine = (x: number, base: number, h: number, w: number, col: string) => {
+    ctx.fillStyle = col
+    ctx.fillRect(x - w * 0.04, base - h * 0.15, w * 0.08, h * 0.2)
+    for (let i = 0; i < 6; i++) {
+      const y = base - h * 0.12 - (i * h * 0.85) / 6
+      const s = w * (1 - i / 7) * 0.5
+      ctx.beginPath()
+      ctx.moveTo(x - s, y)
+      ctx.lineTo(x + s, y)
+      ctx.lineTo(x, y - h * 0.28)
+      ctx.fill()
+    }
+  }
+  for (let i = 0; i < 14; i++) pine(rand() * W, 470 + rand() * 30, 200 + rand() * 120, 80 + rand() * 40, '#163338')
+  for (let i = 0; i < 9; i++) pine(rand() * W, 560 + rand() * 40, 320 + rand() * 160, 110 + rand() * 50, '#071114')
+  ctx.fillStyle = '#0c1d20'
+  ctx.fillRect(0, 590, W, H - 590)
+  // Deer in a clearing.
+  ctx.fillStyle = '#cfd8cc'
+  ctx.beginPath()
+  ctx.ellipse(250, 520, 40, 18, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillRect(214, 520, 6, 48)
+  ctx.fillRect(228, 520, 6, 50)
+  ctx.fillRect(268, 520, 6, 48)
+  ctx.fillRect(280, 520, 6, 50)
+  ctx.beginPath()
+  ctx.moveTo(280, 510)
+  ctx.lineTo(300, 470)
+  ctx.lineTo(312, 474)
+  ctx.lineTo(296, 520)
+  ctx.fill()
+  ctx.strokeStyle = '#cfd8cc'
+  ctx.lineWidth = 3
+  ctx.beginPath()
+  ctx.moveTo(304, 470)
+  ctx.lineTo(296, 440)
+  ctx.moveTo(300, 455)
+  ctx.lineTo(288, 446)
+  ctx.moveTo(308, 470)
+  ctx.lineTo(320, 442)
+  ctx.moveTo(314, 456)
+  ctx.lineTo(328, 450)
+  ctx.stroke()
+  const t = new CanvasTexture(c)
+  t.colorSpace = SRGBColorSpace
+  t.anisotropy = 8
+  return t
+}
+
+const NO_SHADOW = new Set<Key>(['screen', 'arch', 'disc', 'glass', 'flame', 'frost', 'groove', 'art', 'sheer', 'tassel'])
 
 const half = (b: Box) => [(b.max[0] - b.min[0]) / 2, (b.max[1] - b.min[1]) / 2, (b.max[2] - b.min[2]) / 2] as [number, number, number]
 const mid = (b: Box) => [(b.max[0] + b.min[0]) / 2, (b.max[1] + b.min[1]) / 2, (b.max[2] + b.min[2]) / 2] as [number, number, number]
@@ -150,7 +227,7 @@ function Movable({ mv, material }: { mv: Moving; material: MeshStandardMaterial 
 /** Furniture and fit-out, mounted on /dmr only: one merged mesh per material, plus drawers and shutters that open. */
 export function Interior({ m }: { m: Materials }) {
   const built = useMemo(() => {
-    const pieces = [buildTvUnit(), buildDining(), buildFoyer(), buildKitchen()]
+    const pieces = [buildTvUnit(), buildDining(), buildFoyer(), buildKitchen(), buildLiving(), buildCeilings()]
     const lists: Partial<Record<Key, Parameters<typeof merge>[0]>> = {}
     for (const { parts } of pieces)
       for (const [k, g] of Object.entries(parts) as [Key, Parameters<typeof merge>[0]][]) (lists[k] ??= []).push(...g)
@@ -222,6 +299,22 @@ export function Interior({ m }: { m: Materials }) {
         depthWrite: false,
         side: DoubleSide,
       }),
+      paint: new MeshStandardMaterial({ color: new Color('#f5f4f1'), roughness: 0.96 }),
+      terracotta: new MeshStandardMaterial({ color: new Color('#c56f4c'), roughness: 0.9 }),
+      groove: new MeshStandardMaterial({ color: new Color('#8f8a82'), roughness: 0.9 }),
+      grey: new MeshStandardMaterial({ color: new Color('#8d8e8c'), roughness: 0.95 }),
+      leaf: new MeshStandardMaterial({ color: new Color('#3f6a2c'), roughness: 0.7, side: DoubleSide }),
+      linen: new MeshStandardMaterial({ color: new Color('#d8cdb8'), roughness: 0.95, side: DoubleSide }),
+      sheer: new MeshStandardMaterial({
+        color: new Color('#f6f3ec'),
+        roughness: 0.9,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+        side: DoubleSide,
+      }),
+      tassel: new MeshStandardMaterial({ color: new Color('#c9b48c'), roughness: 0.8 }),
+      art: new MeshStandardMaterial({ map: artTexture(), roughness: 0.6 }),
     }
   }, [m])
 

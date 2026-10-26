@@ -3,6 +3,7 @@ import { Color, CylinderGeometry, MeshStandardMaterial, type BufferGeometry } fr
 import { boxesToGeometry, type Box } from './geometry'
 import { MARBLE_REPEAT, type Materials } from './materials'
 import { merge } from './interior/kit'
+import { soffitAt } from './interior/ceilings'
 import { CEILING, toX, toZ, unitById } from './plan'
 
 // Site fixtures in flat 04 (main and /dmr share the walls), matched to site photos.
@@ -248,12 +249,13 @@ function kitchen(p: Parts) {
 }
 
 function ceilingSprinkler(p: Parts, [x, z]: [number, number]) {
-  p.knobs.push(new CylinderGeometry(0.04, 0.04, 0.004, 24).translate(x, CEILING - 0.002, z))
-  p.orange.push(new CylinderGeometry(0.012, 0.015, 0.03, 12).translate(x, CEILING - 0.015, z))
+  const y = soffitAt(x, z)
+  p.knobs.push(new CylinderGeometry(0.04, 0.04, 0.004, 24).translate(x, y - 0.002, z))
+  p.orange.push(new CylinderGeometry(0.012, 0.015, 0.03, 12).translate(x, y - 0.015, z))
 }
 
 function smokeDetector(p: Parts, [x, z]: [number, number]) {
-  p.knobs.push(new CylinderGeometry(0.05, 0.055, 0.045, 32).translate(x, CEILING - 0.0225, z))
+  p.knobs.push(new CylinderGeometry(0.05, 0.055, 0.045, 32).translate(x, soffitAt(x, z) - 0.0225, z))
 }
 
 function masterSuite(p: Parts) {
@@ -375,7 +377,7 @@ function sprinkler() {
   const [north, south] = [toZ(unit.Y(289)), toZ(unit.Y(392))]
   const pipe = new CylinderGeometry(0.02, 0.02, south - north, 16).rotateX(Math.PI / 2).translate(east - 0.04, CEILING - 0.06, (north + south) / 2)
   const [x, z] = point(LIVING_N, 2.27, 0.3)
-  const head = new CylinderGeometry(0.02, 0.025, 0.03, 16).translate(x, CEILING - 0.015, z)
+  const head = new CylinderGeometry(0.02, 0.025, 0.03, 16).translate(x, soffitAt(x, z) - 0.015, z)
   return merge([pipe, head])
 }
 
